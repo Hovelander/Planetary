@@ -3,45 +3,53 @@
 //  Kepler
 //
 //  Created by Tom Carden on 6/2/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #pragma once
 
 #include <string>
+#include "cinder/app/AppCocoaTouch.h"
 #include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
 #include "cinder/Area.h"
-#include "BloomNode.h"
+#include "OrientationHelper.h"
 
-class NotificationOverlay : public BloomNode {
+using namespace std;
+using namespace ci;
+using namespace ci::app;
+
+class NotificationOverlay {
   
 public:
     
     NotificationOverlay();    
     ~NotificationOverlay();
     
-    void setup( const ci::Font &font );
+    void setup( AppCocoaTouch *app, const Orientation &orientation, const Font &font );
     void update();
     void draw();
     
-    void show( const ci::gl::Texture &texture, const ci::Area &srcRect, const std::string &message );    
-    void show( const ci::gl::Texture &texture1, const ci::Area &srcRect1, const ci::Area &srcRect2, const std::string &message );
-	void showLetter( const char &c, const std::string &message, const ci::Font &hugeFont );
+    void setInterfaceOrientation( const Orientation &orientation );
+    
+    void show(const gl::Texture &texture, const Area &srcRect, const string &message);
     void hide();
     
 private:
+    AppCocoaTouch *mApp;
+
+    Orientation mInterfaceOrientation;
+    Matrix44f mOrientationMatrix;
+    Vec2f mInterfaceSize;
     
     bool mSetup;
     bool mActive;
     float mFadeDelay, mFadeDuration, mLastShowTime;
-    ci::gl::Texture mCurrentTexture;
-    ci::Area mCurrentSrcArea;
-    ci::Area mCurrentSecondSrcArea;
-    std::string mCurrentMessage;
-    ci::Rectf mMessageRect, mIconRect;
-    float mAlpha;
-    ci::Font mFont;
-    ci::gl::Texture mMessageTexture;
+    gl::Texture mCurrentTexture;
+    Area mCurrentSrcArea;
+    string mCurrentMessage;
+	
+	Font mFont;
+	gl::Texture mMessageTexture;
     
 };

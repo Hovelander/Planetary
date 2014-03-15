@@ -3,14 +3,13 @@
 //  Kepler
 //
 //  Created by Tom Carden on 6/9/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #pragma once
 
 #include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
-#include "cinder/Camera.h"
 
 class Galaxy {
 public:
@@ -44,12 +43,11 @@ public:
     
     void update(const ci::Vec3f &eye, 
                 const float &fadeInAlphaToArtist, 
-                const float rotSpeed,
-				const float eclipseAmt,
+                const float &elapsedSeconds,
                 const ci::Vec3f &bbRight, 
                 const ci::Vec3f &bbUp);
     
-    void drawLightMatter( float fadeInAlphaToArtist );
+    void drawLightMatter();
     void drawSpiralPlanes();
     void drawCenter();
     void drawDarkMatter();
@@ -73,7 +71,5 @@ private:
 
 	int	  mDarkMatterCylinderRes;
 	float mLightMatterBaseRadius;
-	float mDarkMatterBaseRadius; 
-    
-	float mDistFromCamZAxis;
+	float mDarkMatterBaseRadius;     
 };

@@ -3,11 +3,11 @@
  *  Kepler
  *
  *  Created by Robert Hodgin on 2/25/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
-#include <boost/foreach.hpp>
+
 #include <deque>
 #include "World.h"
 #include "NodeArtist.h"
@@ -42,8 +42,6 @@ void World::setup()
             mLoSphere.setup(12);
             mTySphere.setup(8);
 		}
-        mOrbitRing.setup();
-        mPlanetRing.setup();
         mSpheresInitialized = true;
 	}
 	
@@ -55,7 +53,7 @@ void World::setup()
 
 void World::initNodes( const vector<PlaylistRef> &artists, const Font &font, const Font &smallFont, const Surface &highResSurfaces, const Surface &lowResSurfaces, const Surface &noAlbumArt )
 {
-//	float t = App::get()->getElapsedSeconds();
+	float t = App::get()->getElapsedSeconds();
 
 	for( vector<NodeArtist*>::iterator it = mNodes.begin(); it != mNodes.end(); ++it ){
         NodeArtist* node = *it;
@@ -65,57 +63,66 @@ void World::initNodes( const vector<PlaylistRef> &artists, const Font &font, con
     mNodesById.clear();
     
 	int i=0;
-    BOOST_FOREACH(PlaylistRef artistPlaylist, artists) {
+	for(vector<PlaylistRef>::const_iterator it = artists.begin(); it != artists.end(); ++it){
+        PlaylistRef artistPlaylist = *it;
 		NodeArtist *newNode = new NodeArtist( i++, font, smallFont, highResSurfaces, lowResSurfaces, noAlbumArt );
 		newNode->setData( artistPlaylist );
         newNode->setSphereData( &mHiSphere, &mMdSphere, &mLoSphere, &mTySphere );
 		mNodes.push_back( newNode );
-        mNodesById[newNode->getId()] = newNode;
+        mNodesById[artistPlaylist->getArtistId()] = newNode;
 	}
 
-//	cout << (App::get()->getElapsedSeconds() - t) << " seconds to World::initNodes" << endl;
+    mOrbitRing.setup();
+    mPlanetRing.setup();
+	
+	cout << (App::get()->getElapsedSeconds() - t) << " seconds to World::initNodes" << endl;
     
 	mIsInitialized = true;
 }
 
 void World::setFilter(FilterRef filterRef)
-{    
+{
     mFilterRef = filterRef;
     
+    // deselect all nodes first
+	for( vector<NodeArtist*>::iterator it = mNodes.begin(); it != mNodes.end(); ++it ){
+		(*it)->mIsHighlighted = false;
+		(*it)->mIsSelected = false; // FIXME: should really be deselect, but how to guarantee useful nodes aren't deleted?
+	}
+	
     mFilteredNodes.clear();
     
-    BOOST_FOREACH(NodeArtist* nodeArtist, mNodes) {
-        if ( mFilterRef->testArtist( nodeArtist->getPlaylist() ) ) {
-            nodeArtist->mIsHighlighted = true;
-            mFilteredNodes.push_back(nodeArtist);
-        }
-        else {
-            nodeArtist->mIsHighlighted = false;
+	for(vector<NodeArtist*>::iterator it = mNodes.begin(); it != mNodes.end(); ++it){
+        if ( mFilterRef->testArtist( (*it)->getPlaylist() ) ) {
+            (*it)->mIsHighlighted = true;
+            mFilteredNodes.push_back(*it);
         }
 	}
 	
 	if( mFilteredNodes.size() > 1 ){
-		if( mAge >= mEndRepulseAge + 150 ){        
-            mConstellation.setup( mFilteredNodes );
-        }
-	}    
+		mConstellation.setup( mFilteredNodes );
+	}
 }
 
 void World::updateIsPlaying( uint64_t artistId, uint64_t albumId, uint64_t trackId )
 {
 	mPlayingTrackNode = NULL;
 	
-    BOOST_FOREACH(NodeArtist* artistNode, mNodes) {        
+    // TODO: proper iterators I suppose?
+    for (int i = 0; i < mNodes.size(); i++) {
+        NodeArtist* artistNode = mNodes[i];
         artistNode->mIsPlaying = artistNode->getId() == artistId;
-        BOOST_FOREACH(Node* albumNode, artistNode->mChildNodes) {        
+        for (int j = 0; j < artistNode->mChildNodes.size(); j++) {					
+            Node* albumNode = artistNode->mChildNodes[j];
             albumNode->mIsPlaying = albumNode->getId() == albumId;
-            BOOST_FOREACH(Node *trackNode, albumNode->mChildNodes) {        
+            for (int k = 0; k < albumNode->mChildNodes.size(); k++) {
+                Node *trackNode = albumNode->mChildNodes[k];
                 bool wasPlaying = trackNode->mIsPlaying;
                 trackNode->mIsPlaying = trackNode->getId() == trackId;
 				if( trackNode->mIsPlaying && !trackNode->isDying() ){
-					mPlayingTrackNode = static_cast<NodeTrack*>(trackNode);
+					mPlayingTrackNode = (NodeTrack*)trackNode;
                     if (!wasPlaying) {
-                        mPlayingTrackNode->setStartAngle();
+                        ((NodeTrack*)trackNode)->setStartAngle();
                     }
 				}
             }            
@@ -125,13 +132,17 @@ void World::updateIsPlaying( uint64_t artistId, uint64_t albumId, uint64_t track
 
 void World::selectHierarchy( uint64_t artistId, uint64_t albumId, uint64_t trackId )
 {
-    BOOST_FOREACH(NodeArtist* artistNode, mNodes) {        
+    // TODO: proper iterators I suppose?    
+    for (int i = 0; i < mNodes.size(); i++) {
+        NodeArtist* artistNode = mNodes[i];
         if (artistNode->getId() == artistId) {
             artistNode->select();
-            BOOST_FOREACH(Node* albumNode, artistNode->mChildNodes) {        
+            for (int j = 0; j < artistNode->mChildNodes.size(); j++) {					
+                Node* albumNode = artistNode->mChildNodes[j];
                 if (albumNode->getId() == albumId) {
                     albumNode->select();
-                    BOOST_FOREACH(Node *trackNode, albumNode->mChildNodes) {        
+                    for (int k = 0; k < albumNode->mChildNodes.size(); k++) {
+                        Node *trackNode = albumNode->mChildNodes[k];
                         if (trackNode->getId() == trackId) {
                             trackNode->select();
                         }
@@ -154,100 +165,57 @@ void World::selectHierarchy( uint64_t artistId, uint64_t albumId, uint64_t track
 NodeTrack* World::getTrackNodeById( uint64_t artistId, uint64_t albumId, uint64_t trackId )
 {
     // NB:- artist and album must be selected, otherwise track node won't exist
-    NodeArtist* artistNode = getArtistNodeById(artistId);
-    if (artistNode->getId() == artistId) {
-        BOOST_FOREACH(Node* albumNode, artistNode->mChildNodes) {        
-            if (albumNode->getId() == albumId) {
-                BOOST_FOREACH(Node *trackNode, albumNode->mChildNodes) {        
-                    if (trackNode->getId() == trackId) {
-                        return static_cast<NodeTrack*>(trackNode);
-                    }
-                }            
-                break;
+    // TODO: proper iterators I suppose?        
+    for (int i = 0; i < mNodes.size(); i++) {
+        NodeArtist* artistNode = mNodes[i];
+        if (artistNode->getId() == artistId) {
+            for (int j = 0; j < artistNode->mChildNodes.size(); j++) {					
+                Node* albumNode = artistNode->mChildNodes[j];
+                if (albumNode->getId() == albumId) {
+                    for (int k = 0; k < albumNode->mChildNodes.size(); k++) {
+                        Node *trackNode = albumNode->mChildNodes[k];
+                        if (trackNode->getId() == trackId) {
+                            return (NodeTrack*)trackNode;
+                        }
+                    }            
+                    break;
+                }
             }
+            break;
         }
-    }
+    }    
     return NULL;
 }
 
-NodeAlbum* World::getAlbumNodeById( uint64_t artistId, uint64_t albumId )
-{
-    // NB:- artist and album must be selected already
-    NodeArtist* artistNode = getArtistNodeById(artistId);
-    if (artistNode->getId() == artistId) {
-        // TODO: add a map childrenById to Node?
-        BOOST_FOREACH(Node* albumNode, artistNode->mChildNodes) {        
-            if (albumNode->getId() == albumId) {
-                return static_cast<NodeAlbum*>(albumNode);
-            }
-        }
-    }
-    return NULL;
-}
-
-// check albums and artists (that may have been selected since the filter was set) and unhighlight them if needed
 void World::updateAgainstCurrentFilter()
 {
     if (mFilterRef) {
-        BOOST_FOREACH(NodeArtist* artistNode, mFilteredNodes) {
-            BOOST_FOREACH(Node* n1, artistNode->mChildNodes) {            
-                NodeAlbum* albumNode = static_cast<NodeAlbum*>(n1);                
+        // TODO: proper iterators I suppose?
+        for (int i = 0; i < mNodes.size(); i++) {
+            NodeArtist* artistNode = mNodes[i];
+            artistNode->mIsHighlighted = mFilterRef->testArtist(artistNode->getPlaylist());
+			
+            for (int j = 0; j < artistNode->mChildNodes.size(); j++) {					
+                // FIXME: static cast?
+                NodeAlbum* albumNode = (NodeAlbum*)(artistNode->mChildNodes[j]);
                 albumNode->mIsHighlighted = mFilterRef->testAlbum(albumNode->getPlaylist());
-                BOOST_FOREACH(Node* n2, albumNode->mChildNodes) {            
-                    NodeTrack *trackNode = static_cast<NodeTrack*>(n2);
-                    trackNode->mIsHighlighted = albumNode->mIsHighlighted && mFilterRef->testTrack(trackNode->mTrack);
-                }
+				
+                for (int k = 0; k < albumNode->mChildNodes.size(); k++) {
+                    // FIXME: static cast?
+                    NodeTrack *trackNode = (NodeTrack*)(albumNode->mChildNodes[k]);
+                    trackNode->mIsHighlighted = mFilterRef->testTrack(trackNode->mTrack);
+                }            
             }
-        }
+        }        
     }
-}
-
-NodeTrack* World::selectPlayingHierarchy( uint64_t artistId, uint64_t albumId, uint64_t trackId )
-{
-    mPlayingTrackNode = NULL;
-    
-    BOOST_FOREACH(NodeArtist* artistNode, mNodes) {        
-        artistNode->mIsPlaying = artistNode->getId() == artistId;
-        if (artistNode->mIsPlaying) {
-            artistNode->select();
-        }
-        else {
-            artistNode->deselect();
-        }
-        BOOST_FOREACH(Node* albumNode, artistNode->mChildNodes) {        
-            albumNode->mIsPlaying = albumNode->getId() == albumId;
-            if (albumNode->mIsPlaying) {
-                albumNode->select();
-            }
-            else {
-                albumNode->deselect();
-            }
-            BOOST_FOREACH(Node* trackNode, albumNode->mChildNodes) {        
-                bool wasPlaying = trackNode->mIsPlaying;
-                trackNode->mIsPlaying = trackNode->getId() == trackId;
-                if( trackNode->mIsPlaying && !trackNode->isDying() ){
-                    mPlayingTrackNode = static_cast<NodeTrack*>(trackNode);
-                    if (!wasPlaying) {
-                        mPlayingTrackNode->setStartAngle();
-                    }
-                }
-                if (trackNode->mIsPlaying) {
-                    trackNode->select();
-                }
-                else {
-                    trackNode->deselect();
-                }                            
-            }            
-        }
-    }    
-    
-    return mPlayingTrackNode;
 }
 
 void World::checkForNameTouch( vector<Node*> &nodes, const Vec2f &pos )
 {
-    BOOST_FOREACH(NodeArtist* artistNode, mFilteredNodes) {        
-        artistNode->checkForNameTouch( nodes, pos );
+    for( vector<NodeArtist*>::iterator it = mNodes.begin(); it != mNodes.end(); it++) {
+        if( (*it)->mIsHighlighted ) {
+            (*it)->checkForNameTouch( nodes, pos );
+        }
     }
 }
 
@@ -256,8 +224,8 @@ void World::updateGraphics( const CameraPersp &cam, const Vec2f &center, const V
     const float w = app::getWindowWidth();
     const float h = app::getWindowHeight();
     
-    BOOST_FOREACH(NodeArtist* artistNode, mNodes) {        
-		artistNode->updateGraphics( cam, center, bbRight, bbUp, w, h );
+	for( vector<NodeArtist*>::iterator it = mNodes.begin(); it != mNodes.end(); ++it ){
+		(*it)->updateGraphics( cam, center, bbRight, bbUp, w, h );
 	}
     
     if (mIsInitialized) {
@@ -275,7 +243,7 @@ void World::update( float param1, float param2 )
 			mIsRepulsing = false;
 		}
 		
-		if( mAge == mEndRepulseAge + 150 ){
+		if( mAge == mEndRepulseAge + 100 ){
 			mConstellation.setup( mFilteredNodes );
 		}
 		
@@ -291,8 +259,8 @@ void World::update( float param1, float param2 )
             mPlayingTrackNode = NULL;
         }   
 		
-        BOOST_FOREACH(NodeArtist* artistNode, mNodes) {
-			artistNode->update( param1, param2 );
+		for( vector<NodeArtist*>::iterator it = mNodes.begin(); it != mNodes.end(); ++it ){
+			(*it)->update( param1, param2 );
 		}        
 	}
 }
@@ -305,14 +273,14 @@ void World::repulseNodes()
 		for( ++p2; p2 != mNodes.end(); ++p2 ) {
 			Vec3f dir = (*p1)->mPosDest - (*p2)->mPosDest;
 			
-			float thresh = 20.0f;
+			float thresh = 10.0f;
 			if( dir.x > -thresh && dir.x < thresh && dir.y > -thresh && dir.y < thresh && dir.z > -thresh && dir.z < thresh ){
 				float distSqrd = dir.lengthSquared();
 				
 				if( distSqrd > 0.0f ){
-					float F = constrain( 1.0f/distSqrd, 0.0f, 1.0f );
+					float F = 1.0f/distSqrd;
 					dir = F * dir.normalized() * 0.75f;
-					dir.y *= 0.5f;
+					dir.y *= 0.7f;
 					
 					// acceleration = force / mass
 					(*p1)->mAcc += dir;
@@ -335,8 +303,8 @@ void World::drawStarGlowsVertexArray()
 
 void World::drawRings( const gl::Texture &tex, float camZPos )
 {
-    BOOST_FOREACH(NodeArtist* artistNode, mNodes) {        
-		artistNode->drawRings( tex, mPlanetRing, camZPos );
+	for( vector<NodeArtist*>::iterator it = mNodes.begin(); it != mNodes.end(); ++it ){
+		(*it)->drawRings( tex, mPlanetRing, camZPos );
 	}
 }
 
@@ -345,23 +313,25 @@ void World::drawNames( const CameraPersp &cam, float pinchAlphaOffset, float ang
     // FIXME: consider splitting Node::drawName into drawNameShadow and drawName and using
     // a single bloom::gl::begin/endBatch to reduce the number of state switches
     // needs to extend bloom::gl batching to support storing the current color as well as texture
-    BOOST_FOREACH(NodeArtist* artistNode, mFilteredNodes) {    
-        artistNode->drawName( cam, pinchAlphaOffset, angle );
+	for( vector<NodeArtist*>::iterator it = mNodes.begin(); it != mNodes.end(); ++it ){
+		if( (*it)->mIsHighlighted ){
+			(*it)->drawName( cam, pinchAlphaOffset, angle );
+		}
 	}
 }
 
 // assumes texture is already bound
-void World::drawOrbitRings( float pinchAlphaOffset, float camAlpha, float fadeInAlphaToArtist, float fadeInArtistToAlbum )
+void World::drawOrbitRings( float pinchAlphaOffset, float camAlpha )
 {
-    BOOST_FOREACH(NodeArtist* artistNode, mNodes) {
-		artistNode->drawOrbitRing( pinchAlphaOffset, camAlpha, mOrbitRing, fadeInAlphaToArtist, fadeInArtistToAlbum );
+	for( vector<NodeArtist*>::iterator it = mNodes.begin(); it != mNodes.end(); ++it ){
+		(*it)->drawOrbitRing( pinchAlphaOffset, camAlpha, mOrbitRing );
 	}
 }
 
 void World::drawTouchHighlights( float zoomAlpha )
 {
-    BOOST_FOREACH(NodeArtist* artistNode, mNodes) {
-		artistNode->drawTouchHighlight( zoomAlpha );
+	for( vector<NodeArtist*>::iterator it = mNodes.begin(); it != mNodes.end(); ++it ){
+		(*it)->drawTouchHighlight( zoomAlpha );
 	}
 }
 

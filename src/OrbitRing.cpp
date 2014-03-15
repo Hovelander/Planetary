@@ -3,7 +3,7 @@
 //  Kepler
 //
 //  Created by Tom Carden on 6/13/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #include "cinder/gl/gl.h"
@@ -43,7 +43,7 @@ void OrbitRing::setup()
     glGenBuffers(1, &mLowResVBO);
     glBindBuffer(GL_ARRAY_BUFFER, mLowResVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(VertexData) * G_RING_LOW_RES, mVertsLowRes, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0); // Leave no VBO bound.        
+    glBindBuffer(GL_ARRAY_BUFFER,0); // Leave no VBO bound.        
 
     delete[] mVertsLowRes;
 
@@ -59,7 +59,7 @@ void OrbitRing::setup()
     glGenBuffers(1, &mHighResVBO);
     glBindBuffer(GL_ARRAY_BUFFER, mHighResVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(VertexData) * G_RING_HIGH_RES, mVertsHighRes, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0); // Leave no VBO bound.        
+    glBindBuffer(GL_ARRAY_BUFFER,0); // Leave no VBO bound.        
 
     delete[] mVertsHighRes;    
 }

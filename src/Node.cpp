@@ -3,7 +3,7 @@
  *  Kepler
  *
  *  Created by Robert Hodgin on 2/25/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
@@ -11,9 +11,9 @@
 #include "cinder/Rand.h"
 #include "cinder/gl/gl.h"
 #include "cinder/Text.h"
-#include "cinder/Utilities.h"
 #include "Globals.h"
 #include "Node.h"
+#include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/foreach.hpp>
 
@@ -36,7 +36,7 @@ Node::Node( Node *parent, int index, const Font &font, const Font &smallFont, co
 	mOrbitStartAngle	= Rand::randFloat( TWO_PI );
 	mOrbitAngle			= mOrbitStartAngle;
 	mOrbitPeriod		= Rand::randFloat( 225.0f, 250.0f ); // TODO: move to NodeArtist and make non-random
-	mOrbitRadius		= 0.0001f;
+	mOrbitRadius		= 0.01f;
 	mAngularVelocity	= 0.0f;
 	mPercentPlayed		= 0.0f;
 	mDistFromCamZAxis	= 1000.0f;
@@ -56,11 +56,7 @@ Node::Node( Node *parent, int index, const Font &font, const Font &smallFont, co
 	mIsHighlighted		= false;
 	mIsDying			= false;
 	mIsDead				= false;
-    
-    mNameTextureRequested = false;
-    mLabelScale         = 1.0f;
-	mTaskId             = 0;
-    
+	
 	mDeathCount			= 0;
 	mDeathThresh		= 100;
 	mDeathPer			= 0.0f;
@@ -84,8 +80,7 @@ void Node::setSphereData( BloomSphere *hiSphere, BloomSphere *mdSphere, BloomSph
     mTySphere = tySphere;
 }
 
-// should be called in the background (or once per frame)
-void Node::createNameSurface()
+void Node::createNameTexture()
 {
 	TextLayout layout;
 	
@@ -94,7 +89,7 @@ void Node::createNameSurface()
 	string nameLine2 = "(";
 	bool isTwoLines = false;
 	if( mGen == G_TRACK_LEVEL ){
-		numberLine1 = toString( getTrackNumber() ) + ". ";
+		numberLine1 = boost::lexical_cast<string>( getTrackNumber() ) + ". ";
 	}
 	
 	layout.setFont( mSmallFont );
@@ -150,24 +145,17 @@ void Node::createNameSurface()
 		} else if( year < 1900 ){
 			yearStr = "Incorrect Data";
 		} else {
-			yearStr = toString( getReleaseYear() );	
+			yearStr = boost::lexical_cast<string>( getReleaseYear() );	
 		}
 		layout.addLine( yearStr );
 	}
-	Surface8u nameSurface = Surface8u( layout.render( true, false ) );
-    mTaskId = UiTaskQueue::pushTask( std::bind( std::mem_fun( &Node::createNameTexture ), this, nameSurface ) );
-}
-
-// must be on UI thread
-void Node::createNameTexture( Surface8u nameSurface )
-{
-	mNameTex = gl::Texture( nameSurface );
-    mNameTexCreatedTime = app::getElapsedSeconds();
+	Surface8u nameSurface	= Surface8u( layout.render( true, false ) );
+	mNameTex				= gl::Texture( nameSurface );
 }
 
 void Node::update( float param1, float param2 )
 {	
-	mInvRadius			= ( 1.0f/(mRadius*0.2f) );
+	mInvRadius		= ( 1.0f/mRadius ) * 0.5f;
 	mClosenessFadeAlpha = constrain( ( mDistFromCamZAxis - mRadius ) * mInvRadius, 0.0f, 1.0f );
 	
 	mOrbitRadius	-= ( mOrbitRadius - mOrbitRadiusDest ) * 0.1f;
@@ -192,6 +180,7 @@ void Node::update( float param1, float param2 )
 	
 	mDeathPer = 1.0f - (float)mDeathCount/(float)mDeathThresh;
 	mAge ++;
+	
 	
 	bool clearChildNodes = false;
 	for( vector<Node*>::iterator nodeIt = mChildNodes.begin(); nodeIt != mChildNodes.end(); ++nodeIt ){
@@ -235,22 +224,22 @@ void Node::updateGraphics( const CameraPersp &cam, const Vec2f &center, const Ve
 
 void Node::drawEclipseGlow()
 {
-    BOOST_FOREACH(Node* node, mChildNodes) {
-		node->drawEclipseGlow();
+	for( vector<Node*>::iterator nodeIt = mChildNodes.begin(); nodeIt != mChildNodes.end(); ++nodeIt ){
+		(*nodeIt)->drawEclipseGlow();
 	}
 }
 
 void Node::drawRings( const gl::Texture &tex, const PlanetRing &planetRing, float camZPos )
 {
-    BOOST_FOREACH(Node* node, mChildNodes) {
-		node->drawRings( tex, planetRing, camZPos );
+	for( vector<Node*>::iterator nodeIt = mChildNodes.begin(); nodeIt != mChildNodes.end(); ++nodeIt ){
+		(*nodeIt)->drawRings( tex, planetRing, camZPos );
 	}
 }
 
-void Node::drawOrbitRing( float pinchAlphaOffset, float camAlpha, const OrbitRing &orbitRing, float fadeInAlphaToArtist, float fadeInArtistToAlbum )
+void Node::drawOrbitRing( float pinchAlphaOffset, float camAlpha, const OrbitRing &orbitRing )
 {
-    BOOST_FOREACH(Node* node, mChildNodes) {
-		node->drawOrbitRing( pinchAlphaOffset, camAlpha, orbitRing, fadeInAlphaToArtist, fadeInArtistToAlbum );
+	for( vector<Node*>::iterator nodeIt = mChildNodes.begin(); nodeIt != mChildNodes.end(); ++nodeIt ){
+		(*nodeIt)->drawOrbitRing( pinchAlphaOffset, camAlpha, orbitRing );
 	}
 }
 
@@ -260,96 +249,86 @@ void Node::drawName( const CameraPersp &cam, float pinchAlphaPer, float angle )
 		float alpha;
 		Color c;
 		
-		if( mIsSelected || ( G_ZOOM < mGen && mIsPlaying ) ){
+		if( mIsSelected || ( G_CURRENT_LEVEL < mGen && mIsPlaying ) ){
 			c = Color::white();
 			
-			if( G_ZOOM >= mGen - 2 ) {
+			if( G_CURRENT_LEVEL >= mGen - 2 )
 				alpha = mZoomPer * mDeathPer;
-            }
-			else {
+			else
 				alpha = 0.0f;
-            }
+			
 			
 		} else {
 			c = BRIGHT_BLUE;
-			if( G_ZOOM >= mGen - 1 ) {
+			if( G_CURRENT_LEVEL >= mGen - 1 )
 				alpha = 0.5f * pinchAlphaPer * mZoomPer * mDeathPer;
-            }
-			else {
+			else
 				alpha = 0.0f;
-            }
 		}
-        
+		
+		ColorA col = ColorA( c, alpha );
+		
+		
 		if( alpha > 0 ){
 			Vec2f pos1, pos2;
 			Vec2f offset0, offset1, offset2;
 			
 			if (mNameTex == NULL) {
-                if (!mNameTextureRequested) {
-                    mNameTextureRequested = true;
-                    // do the TextLayout and surface bit one per frame
-                    mTaskId = UiTaskQueue::pushTask( std::bind( std::mem_fun( &Node::createNameSurface ), this ) );
-                }
+				createNameTexture();
 			}
-            else {
 
-                offset0 = Vec2f( mSphereScreenRadius, mSphereScreenRadius ) * 0.75f;
-                offset0.rotate( angle );
-                pos1 = mScreenPos + offset0;
-                
-                offset1 = Vec2f( 5.0f, 5.0f ) * ( ( G_TRACK_LEVEL + 1.0f ) - mGen );
-                offset1.rotate( angle );
-                pos2 = pos1 + offset1;
-                offset2 = Vec2f( 2.0f, -8.0f );
-                offset2.rotate( angle );
+			offset0 = Vec2f( mSphereScreenRadius, mSphereScreenRadius ) * 0.75f;
+			offset0.rotate( angle );
+			pos1 = mScreenPos + offset0;
+			
+			offset1 = Vec2f( 5.0f, 5.0f ) * ( ( G_TRACK_LEVEL + 1.0f ) - mGen );
+			offset1.rotate( angle );
+			pos2 = pos1 + offset1;
+			offset2 = Vec2f( 2.0f, -8.0f );
+			offset2.rotate( angle );
 
-                Vec2f texCorner = mNameTex.getSize();
-                
-                glPushMatrix();
-                gl::translate( pos2 + offset2 );
-                if (angle != 0) {
-                    gl::rotate( angle * 180.0f/M_PI );
-                    texCorner.rotate( angle );
-                }
-                if( mIsPlaying ){
-                    float s = (mZoomPer * 0.25f) + 1.0f;
-                    mLabelScale += (s - mLabelScale) * 0.25f;
-                }
-                else {
-                    mLabelScale += (1.0f - mLabelScale) * 0.25f;
-                }
-                gl::scale( Vec3f( mLabelScale, mLabelScale, 1.0f ) );
-                texCorner *= mLabelScale;
-                
-            // DRAW DROP SHADOW
-                if( mIsPlaying ){ 
-                    gl::enableAlphaBlending();
-                    gl::color( ColorA( 0.0f, 0.0f, 0.0f, alpha * 0.35f ) );
-                    gl::draw( mNameTex, Vec2f( 1.0f, 1.0f ) );
-                    gl::enableAdditiveBlending();
-                }
-                
-                // fade label in over 0.25s
-                float labelAlpha = constrain( app::getElapsedSeconds() - mNameTexCreatedTime, 0.0, 0.2 ) * 5.0f;
-
-                gl::color( ColorA( c, alpha * labelAlpha ) );
-                gl::draw( mNameTex, Vec2f::zero() );
-                
-                glPopMatrix();
-                
-                mHitArea = Rectf( pos2 + offset2, pos2 + offset2 + texCorner);
-                mHitArea.canonicalize();
-                mHitArea.inflate( Vec2f( 5.0f, 5.0f ) );        
-                
-                // TODO: this is a lot of state changes per frame. Switch to drawing
-                // all names first, then all lines?
-                glDisable( GL_TEXTURE_2D );
-                
-                gl::color( ColorA( BRIGHT_BLUE, labelAlpha * alpha * 0.5f ) );
-                gl::drawLine( pos1, pos2 );
-                
-            }
-            
+			Vec2f texCorner = mNameTex.getSize();
+			
+			glPushMatrix();
+			gl::translate( pos2 + offset2 );
+			if (angle != 0) {
+				gl::rotate( angle * 180.0f/M_PI );
+				texCorner.rotate( angle );
+			}
+			if( mIsPlaying ){
+				float s = (mZoomPer * 0.25f) + 1.0f;
+				gl::scale( Vec3f( s, s, 1.0f ) );
+				texCorner *= s;
+			}
+			
+		// DRAW DROP SHADOW
+			if( mIsPlaying ){ 
+				gl::enableAlphaBlending();
+				gl::color( ColorA( 0.0f, 0.0f, 0.0f, alpha * 0.35f ) );
+				gl::draw( mNameTex, Vec2f( 1.0f, 1.0f ) );
+				gl::enableAdditiveBlending();
+			}
+			
+			gl::color( col );
+			gl::draw( mNameTex, Vec2f::zero() );
+			
+			glPopMatrix();
+			
+			mHitArea = Rectf( pos2 + offset2, pos2 + offset2 + texCorner);
+			mHitArea.canonicalize();        
+            const float inflate = 5.0f;
+            // TODO: add .inflate to ci::Rectf
+            mHitArea.x1 -= inflate;
+            mHitArea.x2 += inflate;
+            mHitArea.y1 -= inflate;
+            mHitArea.y2 += inflate;
+			
+			// TODO: this is a lot of state changes per frame. Switch to drawing
+			// all names first, then all lines?
+			glDisable( GL_TEXTURE_2D );
+			
+			gl::color( ColorA( BRIGHT_BLUE, alpha * 0.5f ) );
+			gl::drawLine( pos1, pos2 );
 		} else {
 			mHitArea = Rectf( -10000.0f, -10000.0f, -9999.0f, -9999.0f );
 		}
@@ -375,9 +354,9 @@ void Node::drawName( const CameraPersp &cam, float pinchAlphaPer, float angle )
 		 */
 	}
 	
-    BOOST_FOREACH(Node* node, mChildNodes) {
-		if( node->mIsHighlighted ){
-            node->drawName( cam, pinchAlphaPer, angle );
+	for( vector<Node*>::iterator nodeIt = mChildNodes.begin(); nodeIt != mChildNodes.end(); ++nodeIt ){
+		if( (*nodeIt)->mIsHighlighted ){
+            (*nodeIt)->drawName( cam, pinchAlphaPer, angle );
 		}
 	}
 }
@@ -422,8 +401,9 @@ void Node::checkForNameTouch( vector<Node*> &nodes, const Vec2f &pos )
 			nodes.push_back( this );
 		}
 	}
-    BOOST_FOREACH(Node* node, mChildNodes) {
-        node->checkForNameTouch( nodes, pos );
+    vector<Node*>::iterator nodeIt;
+    for( nodeIt = mChildNodes.begin(); nodeIt != mChildNodes.end(); ++nodeIt ){
+        (*nodeIt)->checkForNameTouch( nodes, pos );
     }
 }
 

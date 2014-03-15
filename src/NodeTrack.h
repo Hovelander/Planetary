@@ -3,7 +3,7 @@
  *  Bloom
  *
  *  Created by Robert Hodgin on 1/21/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
@@ -11,21 +11,11 @@
 
 #include "Node.h"
 #include "CinderIPod.h"
-#include "TaskQueue.h"
 
 class NodeTrack : public Node
 {
   public:
 	NodeTrack( Node *parent, int index, const ci::Font &font, const ci::Font &smallFont, const ci::Surface &hiResSurfaces, const ci::Surface &loResSurfaces, const ci::Surface &noAlbumArt );
-    
-    ~NodeTrack()
-    {
-        if (!UiTaskQueue::isTaskComplete(mTaskId)){
-            // cancel the album art rendering...
-            UiTaskQueue::cancelTask(mTaskId);
-        }
-    }
-    
 	void setData( ci::ipod::TrackRef track, ci::ipod::PlaylistRef album, const ci::Surface &albumArt );
     void initVertexArray();
 	void updateAudioData( double currentPlayheadTime );
@@ -33,11 +23,11 @@ class NodeTrack : public Node
 	void drawEclipseGlow();
 	void drawPlanet( const ci::gl::Texture &tex );
 	void drawClouds( const std::vector< ci::gl::Texture> &clouds );
-	void drawOrbitRing( float pinchAlphaOffset, float camAlpha, const OrbitRing &orbitRing, float fadeInAlphaToArtist, float fadeInArtistToAlbum );
+	void drawOrbitRing( float pinchAlphaOffset, float camAlpha, const OrbitRing &orbitRing );
 	void buildPlayheadProgressVertexArray();
 	void drawPlayheadProgress( float pinchAlphaPer, float camAlpha, float pauseAlpha, const ci::gl::Texture &tex, const ci::gl::Texture &originTex );
 //	void drawAtmosphere( const ci::Vec2f &center, const ci::gl::Texture &tex, const ci::gl::Texture &directionalTex, float pinchAlphaPer );
-	void drawAtmosphere( const ci::Vec3f &camEye, const ci::Vec2f &center, const ci::gl::Texture &tex, const ci::gl::Texture &directionalTex, float pinchAlphaPer, float scaleSliderOffset );
+	void drawAtmosphere( const ci::Vec3f &camEye, const ci::Vec2f &center, const ci::gl::Texture &tex, const ci::gl::Texture &directionalTex, float pinchAlphaPer );
 	void findShadows( float camAlpha );
 	void buildShadowVertexArray( ci::Vec3f p1, ci::Vec3f p2, ci::Vec3f p3, ci::Vec3f p4 );
 
@@ -78,7 +68,7 @@ private:
 	bool		mHasClouds;
 	bool		mIsMostPlayed;
 	bool		mHasAlbumArt;
-	bool		mHasRequestedAlbumArt;
+	bool		mHasCreatedAlbumArt;
 	ci::gl::Texture mAlbumArtTex;
 	ci::Surface	mAlbumArtSurface;
 	
@@ -96,7 +86,4 @@ private:
 	GLfloat		*mShadowTexCoords;
     
     uint64_t    mId;
-    
-    void createAlbumArt(); // on ui thread please!
-    uint64_t mTaskId;
 };

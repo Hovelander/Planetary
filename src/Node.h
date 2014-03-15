@@ -3,7 +3,7 @@
  *  Kepler
  *
  *  Created by Robert Hodgin on 2/25/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
@@ -20,7 +20,6 @@
 #include "BloomSphere.h"
 #include "OrbitRing.h"
 #include "PlanetRing.h"
-#include "TaskQueue.h"
 
 using bloom::BloomSphere;
 
@@ -31,10 +30,6 @@ class Node {
     
 	virtual ~Node()
     { 
-        if (!UiTaskQueue::isTaskComplete(mTaskId)) {
-//            std::cout << "canceling request for name rendering #" << mTaskId << std::endl;
-            UiTaskQueue::cancelTask(mTaskId);
-        }
 		for( std::vector<Node*>::iterator nodeIt = mChildNodes.begin(); nodeIt != mChildNodes.end(); ++nodeIt ){
 			delete (*nodeIt);
 		}
@@ -43,17 +38,18 @@ class Node {
 	
 	// METHODS
 	void			setSphereData( BloomSphere *hiSphere, BloomSphere *mdSphere, BloomSphere *loSphere, BloomSphere *tySphere );
+	void			createNameTexture();
 	virtual void	update( float param1, float param2 );
 	virtual void	updateGraphics( const ci::CameraPersp &cam, const ci::Vec2f &center, const ci::Vec3f &bbRight, const ci::Vec3f &bbUp, const float &w, const float &h );
 	virtual void	drawEclipseGlow();
-	virtual void	drawStarGlow( const ci::Vec3f &camEye, const ci::Vec3f &camNormal, const ci::gl::Texture &tex ){};
 	virtual void	drawPlanet( const ci::gl::Texture &tex ) {};
-	virtual void	drawExtraGlow( const ci::Vec3f &camEye, const ci::gl::Texture &texGlow, const ci::gl::Texture &texCore ) {};
+	virtual void	drawExtraGlow( const ci::gl::Texture &texGlow, const ci::gl::Texture &texCore ) {};
 	virtual void	drawClouds( const std::vector< ci::gl::Texture> &clouds ) {};
-	virtual void	drawAtmosphere( const ci::Vec3f &camEye, const ci::Vec2f &center, const ci::gl::Texture &tex, const ci::gl::Texture &directionalTex, float pinchAlphaPer, float scaleSliderOffset ) {};
+//	virtual void	drawAtmosphere( const ci::Vec2f &center, const ci::gl::Texture &tex, const ci::gl::Texture &directionalTex, float pinchAlphaPer ) {};
+	virtual void	drawAtmosphere( const ci::Vec3f &camEye, const ci::Vec2f &center, const ci::gl::Texture &tex, const ci::gl::Texture &directionalTex, float pinchAlphaPer ) {};
 	virtual void	drawRings( const ci::gl::Texture &tex, const PlanetRing &planetRing, float camZPos );
 	virtual void	findShadows( float camAlpha ) {};
-	virtual void	drawOrbitRing( float pinchAlphaOffset, float camAlpha, const OrbitRing &orbitRing, float fadeInAlphaToArtist, float fadeInArtistToAlbum );
+	virtual void	drawOrbitRing( float pinchAlphaOffset, float camAlpha, const OrbitRing &orbitRing );
 
 	void			drawName( const ci::CameraPersp &cam, float pinchAlphaOffset, float angle );
 	void			wasTapped(){ mIsTapped = true; mHighlightStrength = 1.0f; }
@@ -137,7 +133,6 @@ class Node {
 	// NAME
 	ci::Font			mFont, mSmallFont;
 	ci::gl::Texture		mNameTex;			// Texture of the name
-	float				mHashPer;			// Unique 0.0 to 1.0 from artist name
 	ci::Surface			mHighResSurfaces;	// Images for Track moon surface
 	ci::Surface			mLowResSurfaces;	// Images for Track moon surface
 	ci::Surface			mNoAlbumArtSurface;
@@ -175,14 +170,6 @@ protected:
 	bool				mIsDying;
 	bool				mIsDead;
 	
-    bool                mNameTextureRequested;
-    float               mNameTexCreatedTime;
-    float               mLabelScale;
-    uint64_t            mTaskId;
-	void                createNameSurface();
-	void                createNameTexture( ci::Surface8u nameSurface );
-    
-    
 // SPHERE DATA (owned by World)
     BloomSphere *mHiSphere;
     BloomSphere *mMdSphere;

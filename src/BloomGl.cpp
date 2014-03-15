@@ -3,10 +3,9 @@
 //  Kepler
 //
 //  Created by Robert Hodgin on 4/7/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
-#include <boost/foreach.hpp>
 #include "BloomGl.h"
 #include "cinder/Quaternion.h"
 
@@ -186,31 +185,21 @@ namespace bloom { namespace gl {
     
     /////////////////////////////////////////////////////////
 
-    // FIXME: whither ordered_map?
-    boost::unordered_map<GLuint, BatchRef> batchByTex;
-    std::vector<BatchRef> batches;
+    BatchMap batchMap;
     
     void beginBatch()
     {
-        batchByTex.clear();
-        batches.clear();
+        batchMap.clear();
     }
     
     void batchRect( const ci::gl::Texture &texture, const ci::Rectf &srcRect, const ci::Rectf &dstRect )
     {
         GLuint texId = texture.getId();
-        boost::unordered_map<GLuint, BatchRef>::iterator iter = batchByTex.find( texId );
-        BatchRef batch;
-        if (iter != batchByTex.end()) {
-            batch = iter->second;
-        }
-        else {
-            batch = BatchRef(new Batch());
-            batch->texture = texture;
-            batches.push_back(batch);
-            batchByTex[texId] = batch;
-        }
+        Batch *batch = &batchMap[texId];
         int verts = batch->vertices.size();
+        if (verts == 0) {
+            batch->texture = texture;
+        }
         batch->vertices.resize(verts + 6);
         batch->vertices[verts].vertex  = ci::Vec2f(dstRect.x1, dstRect.y1);
         batch->vertices[verts].texture = ci::Vec2f(srcRect.x1, srcRect.y1);
@@ -246,7 +235,8 @@ namespace bloom { namespace gl {
     {
         glEnableClientState(GL_VERTEX_ARRAY);
         glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        BOOST_FOREACH(BatchRef batch, batches) {
+        for (BatchMap::iterator it = batchMap.begin(); it != batchMap.end(); ++it) {
+            Batch *batch = &it->second;
             batch->texture.enableAndBind();
             glVertexPointer(2, GL_FLOAT, sizeof(VertexData), &batch->vertices[0].vertex);
             glTexCoordPointer(2, GL_FLOAT, sizeof(VertexData), &batch->vertices[0].texture);

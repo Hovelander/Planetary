@@ -3,7 +3,7 @@
  *  Bloom
  *
  *  Created by Robert Hodgin on 1/21/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
@@ -30,11 +30,9 @@ NodeTrack::NodeTrack( Node *parent, int index, const Font &font, const Font &sma
     mIsPlaying			= false;
 	mHasClouds			= false;
 	mIsMostPlayed		= false;
+	mHasAlbumArt		= false;
+	mHasCreatedAlbumArt = false;
 	
-    mHasAlbumArt		= false;
-	mHasRequestedAlbumArt = false;
-	mTaskId             = 0;
-    
 	mTotalOrbitVertices		= 0;
 	mPrevTotalOrbitVertices = -1;
     mOrbitVerts				= NULL;
@@ -119,11 +117,7 @@ void NodeTrack::setData( TrackRef track, PlaylistRef album, const Surface &album
     mAxialVel			= Rand::randFloat( 15.0f, 20.0f );
 	mAxialRot			= Vec3f( 0.0f, Rand::randFloat( 150.0f ), mAxialTilt );
 
-	// TEXTURE CREATION DEFERRED (BUT STILL ON UI THREAD)
-	if( !mHasRequestedAlbumArt ){
-        mTaskId = UiTaskQueue::pushTask( std::bind( &NodeTrack::createAlbumArt, this ) );
-		mHasRequestedAlbumArt = true;
-	}
+	// TEXTURE CREATION MOVED TO UPDATE
 }
 
 
@@ -133,15 +127,15 @@ void NodeTrack::setStartAngle()
 	float timeOffset	= (float)mMyTime/mOrbitPeriod;
 	mOrbitStartAngle	= timeOffset * TWO_PI;
 	
-//    if (G_DEBUG) {
-//        float angle	= atan2( mPos.z - mParentNode->mPos.z, mPos.x - mParentNode->mPos.x );
-////        std::cout << "Start Angle set in NodeTrack: " << mOrbitStartAngle << std::endl;
-////        std::cout << "mPercentPlayed: " << mPercentPlayed << std::endl;
-////        std::cout << "timeOffset: " << timeOffset << std::endl;
-////        std::cout << "mMyTime: " << mMyTime << std::endl;
-////        std::cout << "angle: " << angle << std::endl;
-////        std::cout << " ================= " << std::endl;
-//    }
+    if (G_DEBUG) {
+        float angle	= atan2( mPos.z - mParentNode->mPos.z, mPos.x - mParentNode->mPos.x );
+        std::cout << "Start Angle set in NodeTrack: " << mOrbitStartAngle << std::endl;
+        std::cout << "mPercentPlayed: " << mPercentPlayed << std::endl;
+        std::cout << "timeOffset: " << timeOffset << std::endl;
+        std::cout << "mMyTime: " << mMyTime << std::endl;
+        std::cout << "angle: " << angle << std::endl;
+        std::cout << " ================= " << std::endl;
+    }
 }
 
 
@@ -229,6 +223,117 @@ void NodeTrack::buildPlayheadProgressVertexArray()
 
 void NodeTrack::update( float param1, float param2 )
 {	
+	//////////////////////
+	// CREATE MOON TEXTURE
+	if( !mHasCreatedAlbumArt && mAge>mIndex * 2 ){
+        int albumArtWidth   = mAlbumArtSurface.getWidth();
+		if( albumArtWidth > 256 ) albumArtWidth = 256; // FIXME: This is here because the album art is coming back at 320x320 for a 256x256 image request
+		int totalWidth		= albumArtWidth/2; // TODO: rename these?
+		int halfWidth		= totalWidth/2;
+		if( mAlbumArtSurface ){
+            
+			// using 'totalwidth' here because the album art surface that is
+			// being provided by albumNode is 256x256 so the bit that I pull
+			// should be from a 256x256 texture, despite what our eventual
+			// texture size will be.
+			int x			= (int)( totalWidth - mNormPlayCount*totalWidth);
+			int y			= (int)( halfWidth + halfWidth*mAsciiPer );
+			
+			int w			= (int)( mNormPlayCount*totalWidth*2 );
+			int h			= (int)( mNormPlayCount*totalWidth );
+            
+			// grab a section of the album art
+			Area a			= Area( x, y, x+w, y+h );
+            //			std::cout << "area = " << a << std::endl;
+			Surface crop	= Surface( totalWidth, totalWidth, false );
+			Surface crop2	= Surface( totalWidth, totalWidth, false );
+			ci::ip::resize( mAlbumArtSurface, a, &crop, Area( 0, 0, halfWidth, totalWidth ), FilterCubic() );
+            
+			// iterate through it to make it a mirror image
+			Surface::Iter iter = crop2.getIter();
+			while( iter.line() ) {
+				while( iter.pixel() ) {
+					int xi, yi;
+					if( iter.x() >= halfWidth ){
+						xi = iter.x() - halfWidth;
+						yi = iter.y();
+					} else {
+						xi = (halfWidth-1) - iter.x();
+						yi = iter.y();	
+					}
+					ColorA c = crop.getPixel( Vec2i( xi, yi ) );
+					iter.r() = c.r * 255.0f;
+					iter.g() = c.g * 255.0f;
+					iter.b() = c.b * 255.0f;
+				}
+			}
+			
+			
+            
+			// fix the polar pinching
+			Surface::Iter iter2 = crop.getIter();
+			while( iter2.line() ) {
+				float cosTheta = cos( M_PI * ( iter2.y() - (float)( totalWidth - 1 )/2.0f ) / (float)( totalWidth - 1 ) );
+				
+				while( iter2.pixel() ) {
+					float phi	= TWO_PI * ( iter2.x() - halfWidth ) / (double)totalWidth;
+					float phi2	= phi * cosTheta;
+					int i2 = phi2 * totalWidth/TWO_PI + halfWidth;
+					
+					if( i2 < 0 || i2 > totalWidth-1 ){
+						iter2.r() = 255.0f;
+						iter2.g() = 0.0f;
+						iter2.b() = 0.0f;
+					} else {
+						ColorA c = crop2.getPixel( Vec2i( i2, iter2.y() ) );
+						iter2.r() = c.r * 255.0f;
+						iter2.g() = c.g * 255.0f;
+						iter2.b() = c.b * 255.0f;
+					}
+				}
+			}
+			
+			
+			// add the planet texture
+			// and add the shadow from the cloud layer
+            int lowResWidth = mLowResSurfaces.getWidth();
+			Area planetArea			= Area( 0, lowResWidth * mPlanetTexIndex, lowResWidth, lowResWidth * ( mPlanetTexIndex + 1 ) );
+			Surface planetSurface	= mLowResSurfaces.clone( planetArea );
+			
+			iter = planetSurface.getIter();
+			while( iter.line() ) {
+				while( iter.pixel() ) {
+					Vec2i v( iter.x(), iter.y() );
+					ColorA albumColor	= crop.getPixel( v );
+					ColorA surfaceColor	= planetSurface.getPixel( v );
+					float planetVal		= surfaceColor.r;
+					float cloudShadow	= surfaceColor.g * 0.5f + 0.5f;
+					
+					ColorA final		= albumColor * planetVal;
+					final *= cloudShadow;
+					
+					iter.r() = final.r * 255.0f;// + 25.0f;
+					iter.g() = final.g * 255.0f;// + 25.0f;
+					iter.b() = final.b * 255.0f;// + 25.0f;
+				}
+			}
+            
+            gl::Texture::Format fmt;
+            fmt.enableMipmapping( true );
+            fmt.setMinFilter( GL_LINEAR_MIPMAP_LINEAR );
+			
+			
+			mAlbumArtTex		= gl::Texture( planetSurface, fmt );
+			mHasAlbumArt		= true;
+			
+			mHasCreatedAlbumArt = true;
+		}
+		
+	}
+	// END CREATE MOON TEXTURE	
+	//////////////////////////
+	
+	
 	mRadiusDest		= mRadiusInit * param1;
 	mRadius			-= ( mRadius - mRadiusDest ) * 0.2f;
 	mSphere			= Sphere( mPos, mRadius );
@@ -271,7 +376,7 @@ void NodeTrack::update( float param1, float param2 )
 	
     /////////////////////////
     // CALCULATE ECLIPSE VARS
-	if( mParentNode->mParentNode->mDistFromCamZAxisPer > 0.001f && mDistFromCamZAxisPer > 0.001f && mIsHighlighted )
+	if( mParentNode->mParentNode->mDistFromCamZAxisPer > 0.001f && mDistFromCamZAxisPer > 0.001f )
 	{
 		Vec2f p		= mScreenPos;
 		float r		= mSphereScreenRadius;
@@ -317,110 +422,6 @@ void NodeTrack::update( float param1, float param2 )
 	mVel = mPos - prevPos;	
 }
 
-void NodeTrack::createAlbumArt()
-{
-    int albumArtWidth   = mAlbumArtSurface.getWidth();
-    if( albumArtWidth > 256 ) albumArtWidth = 256; // FIXME: This is here because the album art is coming back at 320x320 for a 256x256 image request
-    int totalWidth		= albumArtWidth/2; // TODO: rename these?
-    int halfWidth		= totalWidth/2;
-    if( mAlbumArtSurface ){
-        
-        // using 'totalwidth' here because the album art surface that is
-        // being provided by albumNode is 256x256 so the bit that I pull
-        // should be from a 256x256 texture, despite what our eventual
-        // texture size will be.
-        int x			= (int)( totalWidth - mNormPlayCount*totalWidth);
-        int y			= (int)( halfWidth + halfWidth*mAsciiPer );
-        
-        int w			= (int)( mNormPlayCount*totalWidth*2 );
-        int h			= (int)( mNormPlayCount*totalWidth );
-        
-        // grab a section of the album art
-        Area a			= Area( x, y, x+w, y+h );
-        //			std::cout << "area = " << a << std::endl;
-        Surface crop	= Surface( totalWidth, totalWidth, false );
-        Surface crop2	= Surface( totalWidth, totalWidth, false );
-        ci::ip::resize( mAlbumArtSurface, a, &crop, Area( 0, 0, halfWidth, totalWidth ), FilterCubic() );
-        
-        // iterate through it to make it a mirror image
-        Surface::Iter iter = crop2.getIter();
-        while( iter.line() ) {
-            while( iter.pixel() ) {
-                int xi, yi;
-                if( iter.x() >= halfWidth ){
-                    xi = iter.x() - halfWidth;
-                    yi = iter.y();
-                } else {
-                    xi = (halfWidth-1) - iter.x();
-                    yi = iter.y();	
-                }
-                ColorA c = crop.getPixel( Vec2i( xi, yi ) );
-                iter.r() = c.r * 255.0f;
-                iter.g() = c.g * 255.0f;
-                iter.b() = c.b * 255.0f;
-            }
-        }
-        
-        
-        
-        // fix the polar pinching
-        Surface::Iter iter2 = crop.getIter();
-        while( iter2.line() ) {
-            float cosTheta = cos( M_PI * ( iter2.y() - (float)( totalWidth - 1 )/2.0f ) / (float)( totalWidth - 1 ) );
-            
-            while( iter2.pixel() ) {
-                float phi	= TWO_PI * ( iter2.x() - halfWidth ) / (double)totalWidth;
-                float phi2	= phi * cosTheta;
-                int i2 = phi2 * totalWidth/TWO_PI + halfWidth;
-                
-                if( i2 < 0 || i2 > totalWidth-1 ){
-                    iter2.r() = 255.0f;
-                    iter2.g() = 0.0f;
-                    iter2.b() = 0.0f;
-                } else {
-                    ColorA c = crop2.getPixel( Vec2i( i2, iter2.y() ) );
-                    iter2.r() = c.r * 255.0f;
-                    iter2.g() = c.g * 255.0f;
-                    iter2.b() = c.b * 255.0f;
-                }
-            }
-        }
-        
-        
-        // add the planet texture
-        // and add the shadow from the cloud layer
-        int lowResWidth = mLowResSurfaces.getWidth();
-        Area planetArea			= Area( 0, lowResWidth * mPlanetTexIndex, lowResWidth, lowResWidth * ( mPlanetTexIndex + 1 ) );
-        Surface planetSurface	= mLowResSurfaces.clone( planetArea );
-        
-        iter = planetSurface.getIter();
-        while( iter.line() ) {
-            while( iter.pixel() ) {
-                Vec2i v( iter.x(), iter.y() );
-                ColorA albumColor	= crop.getPixel( v );
-                ColorA surfaceColor	= planetSurface.getPixel( v );
-                float planetVal		= surfaceColor.r;
-                float cloudShadow	= surfaceColor.g * 0.5f + 0.5f;
-                
-                ColorA final		= albumColor * planetVal;
-                final *= cloudShadow;
-                
-                iter.r() = final.r * 255.0f;// + 25.0f;
-                iter.g() = final.g * 255.0f;// + 25.0f;
-                iter.b() = final.b * 255.0f;// + 25.0f;
-            }
-        }
-        
-        gl::Texture::Format fmt;
-        fmt.enableMipmapping( true );
-        fmt.setMinFilter( GL_LINEAR_MIPMAP_LINEAR );
-        
-        
-        mAlbumArtTex		= gl::Texture( planetSurface, fmt );
-        mHasAlbumArt		= true;    
-    }
-}
-
 void NodeTrack::drawEclipseGlow()
 {
 	if( mIsSelected && mDistFromCamZAxisPer > 0.0f ){
@@ -431,10 +432,10 @@ void NodeTrack::drawEclipseGlow()
 
 void NodeTrack::drawPlanet( const gl::Texture &tex )
 {	
-	if( mSphereScreenRadius > 0.5f && mDistFromCamZAxis > mRadius )
+	if( mSphereScreenRadius > 0.5f && mClosenessFadeAlpha > 0.0f )
 	{
         // ROBERT: this was crashing so I put a check for texture existence first
-        if (mHasAlbumArt) {
+        if (mHasCreatedAlbumArt) {
             mAlbumArtTex.enableAndBind();
         }
 
@@ -458,8 +459,7 @@ void NodeTrack::drawPlanet( const gl::Texture &tex )
 			
 		if( mIsHighlighted ){
 			const float grey = mShadowPer + 0.2f;
-			const float eclipseAmt = ( ( 1.0f - mEclipseStrength ) * 0.5f + 0.5f ) * grey;
-			gl::color( ColorA( eclipseAmt, eclipseAmt, eclipseAmt, mClosenessFadeAlpha  ) );
+            gl::color( ColorA( grey, grey, grey, mClosenessFadeAlpha ) );
 			gl::enableAlphaBlending();
 		} else {
             gl::color( ColorA( BLUE, mClosenessFadeAlpha ) );
@@ -476,7 +476,7 @@ void NodeTrack::drawPlanet( const gl::Texture &tex )
             }
 //        }
         
-        if (mHasAlbumArt) {
+        if (mHasCreatedAlbumArt) {
             mAlbumArtTex.disable();
         }
 
@@ -487,7 +487,7 @@ void NodeTrack::drawPlanet( const gl::Texture &tex )
 
 void NodeTrack::drawClouds( const vector<gl::Texture> &clouds )
 {
-	if( mSphereScreenRadius > 2.0f && mDistFromCamZAxis > mRadius ){
+	if( mSphereScreenRadius > 2.0f && mDistFromCamZAxisPer > 0.0f ){
 		if( mIsMostPlayed ){
 
 			glPushMatrix();
@@ -503,8 +503,7 @@ void NodeTrack::drawClouds( const vector<gl::Texture> &clouds )
 
 			if( mIsHighlighted ){
 				const float grey = mShadowPer + 0.2f;
-				const float eclipseAmt = ( ( 1.0f - mEclipseStrength ) * 0.5f + 0.5f ) * grey;
-				gl::color( ColorA( eclipseAmt, eclipseAmt, eclipseAmt, alpha * mClosenessFadeAlpha  ) );
+				gl::color( ColorA( grey, grey, grey, alpha * mClosenessFadeAlpha ) );
 			} else {
 				gl::color( ColorA( BLUE, alpha * mClosenessFadeAlpha ) );
 			}
@@ -527,32 +526,41 @@ void NodeTrack::drawClouds( const vector<gl::Texture> &clouds )
 	}
 }
 
-void NodeTrack::drawAtmosphere( const Vec3f &camEye, const Vec2f &center, const gl::Texture &tex, const gl::Texture &directionalTex, float pinchAlphaPer, float scaleSliderOffset )
+void NodeTrack::drawAtmosphere( const Vec3f &camEye, const Vec2f &center, const gl::Texture &tex, const gl::Texture &directionalTex, float pinchAlphaPer )
 {
-	if( mClosenessFadeAlpha > 0.0f && mDistFromCamZAxis > mRadius ){
-		float alpha = mNormPlayCount * mDeathPer * mClosenessFadeAlpha;
-		Vec2f radius( mRadius, mRadius );
-		radius *= ( 2.435f + scaleSliderOffset + max( ( mSphereScreenRadius - 175.0f ) * 0.001f, 0.0f ) ) * mDeathPer;
+	if( mClosenessFadeAlpha > 0.0f ){
 
-		if( mIsHighlighted ){
-			gl::color( ColorA( BRIGHT_BLUE, alpha ) );
-			tex.enableAndBind();
-			bloom::gl::drawSphericalBillboard( camEye, mPos, radius, 0.0f );
-			tex.disable();
+//		Vec2f dir		= mScreenPos - center;
+//		float dirLength = dir.length()/500.0f;
+		float alpha = mNormPlayCount * mDeathPer * mClosenessFadeAlpha;
+		
+//		float alpha = 0.3f * ( 1.0f - dirLength );
+//		if( G_ZOOM <= G_ALBUM_LEVEL )
+//			alpha = pinchAlphaPer;
+
+		Vec2f radius( mRadius, mRadius );
+		radius *= ( 2.435f + max( ( mSphereScreenRadius - 175.0f ) * 0.001f, 0.0f ) );
+		
+		
+//		float grey = mShadowPer + 0.2f;
+		gl::color( ColorA( BRIGHT_BLUE, alpha ) );
+		tex.enableAndBind();
+		bloom::gl::drawSphericalBillboard( camEye, mPos, radius, 0.0f );
+		tex.disable();
+		
+		if( mIsHighlighted ){ // ONLY DRAW HIGHLIGHTED ATMOSPHERE IF NOT A GHOST MOON
 			gl::color( ColorA( mShadowPer, mShadowPer, mShadowPer, alpha * mEclipseDirBasedAlpha * mDeathPer ) );
-		} else {
-			gl::color( ColorA( BRIGHT_BLUE, alpha * mEclipseDirBasedAlpha ) );
+			directionalTex.enableAndBind();
+			//bloom::gl::drawBillboard( mPos, radius, -mEclipseAngle, mBbRight, mBbUp );
+			bloom::gl::drawSphericalRotatedBillboard( mPos, camEye, mParentNode->mParentNode->mPos, radius );        
+			directionalTex.disable();
 		}
-	
-		directionalTex.enableAndBind();
-		bloom::gl::drawSphericalRotatedBillboard( mPos, camEye, mParentNode->mParentNode->mPos, radius );        
-		directionalTex.disable();
 	}
 }
 
 
 
-void NodeTrack::drawOrbitRing( float pinchAlphaPer, float camAlpha, const OrbitRing &orbitRing, float fadeInAlphaToArtist, float fadeInArtistToAlbum )
+void NodeTrack::drawOrbitRing( float pinchAlphaPer, float camAlpha, const OrbitRing &orbitRing )
 {	
 	float newPinchAlphaPer = pinchAlphaPer;
 	if( G_ZOOM < G_TRACK_LEVEL - 0.5f ){
@@ -562,9 +570,9 @@ void NodeTrack::drawOrbitRing( float pinchAlphaPer, float camAlpha, const OrbitR
 	}
 	
 	if( mIsHighlighted ){
-		gl::color( ColorA( BLUE, camAlpha * fadeInArtistToAlbum ) );		
+		gl::color( ColorA( BLUE, camAlpha * mDeathPer ) );		
 	} else {
-		gl::color( ColorA( BLUE, camAlpha * fadeInArtistToAlbum * 0.3f ) );
+		gl::color( ColorA( BLUE, camAlpha * mDeathPer * 0.3f ) );
 	}
 	
 	glPushMatrix();
@@ -604,11 +612,11 @@ void NodeTrack::drawPlayheadProgress( float pinchAlphaPer, float camAlpha, float
 		glPopMatrix();
 		
 		Vec3f pos = Vec3f( cos( mOrbitStartAngle ), 0.0f, sin( mOrbitStartAngle ) );
-		
+
 		gl::enableAlphaBlending();
 
 		originTex.enableAndBind();
-		gl::drawBillboard( mParentNode->mPos + pos * mOrbitRadius, Vec2f( mRadius, mRadius ) * 2.15f, toDegrees( mOrbitStartAngle ), Vec3f::xAxis(), Vec3f::zAxis() );
+		gl::drawBillboard( mParentNode->mPos + pos * mOrbitRadius, Vec2f( mRadius, mRadius ) * 2.15f, 0.0f, Vec3f::xAxis(), Vec3f::zAxis() );
 		originTex.disable();
 		
 	//	gl::drawLine( pos * ( mOrbitRadius + mRadius * 1.2f ), pos * ( mOrbitRadius - mRadius * 1.2f ) );

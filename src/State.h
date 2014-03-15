@@ -3,7 +3,7 @@
  *  Bloom
  *
  *  Created by Robert Hodgin on 2/7/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
@@ -23,8 +23,9 @@ class State {
  public:
     
     enum FilterMode {
-        FilterModeAlphaChar,
-        FilterModePlaylist
+        FilterModeUndefined,
+        FilterModePlaylist,
+        FilterModeAlphaChar
     };    
     
 	State() {};
@@ -36,7 +37,7 @@ class State {
 	void setAlphaChar( char c );
 	void setAlphaChar( const string &artistName );
 	template<typename T>
-	CallbackId registerAlphaCharStateChanged( T *obj, bool ( T::*callback )( char ) ){
+	CallbackId registerAlphaCharStateChanged( T *obj, bool ( T::*callback )( State* ) ){
 		return mCallbacksAlphaCharStateChanged.registerCb(std::bind1st( std::mem_fun( callback ), obj ) );
 	}
 	
@@ -45,7 +46,7 @@ class State {
 	ci::ipod::PlaylistRef getPlaylist(){ return mCurrentPlaylist; }
 	void setPlaylist( ci::ipod::PlaylistRef playlist );
 	template<typename T>
-	CallbackId registerPlaylistStateChanged( T *obj, bool ( T::*callback )( ci::ipod::PlaylistRef ) ){
+	CallbackId registerPlaylistStateChanged( T *obj, bool ( T::*callback )( State* ) ){
 		return mCallbacksPlaylistStateChanged.registerCb(std::bind1st( std::mem_fun( callback ), obj ) );
 	}
 	
@@ -74,17 +75,13 @@ class State {
 		return NULL;
 	}
 
-    bool setFilterMode(FilterMode filterMode);
+    void setFilterMode(const FilterMode &filterMode) { mFilterMode = filterMode; }
     FilterMode getFilterMode() { return mFilterMode; }
-	template<typename T>
-	CallbackId registerFilterModeStateChanged( T *obj, bool ( T::*callback )( FilterMode ) ){
-		return mCallbacksFilterModeStateChanged.registerCb(std::bind1st( std::mem_fun( callback ), obj ) );
-	}
+    // TODO: callback for FilterModeChanged? should State own Filter (currently in Data)?
     
 private:
-	CallbackMgr<bool(ci::ipod::PlaylistRef)> mCallbacksPlaylistStateChanged;
-	CallbackMgr<bool(char)> mCallbacksAlphaCharStateChanged;	
-	CallbackMgr<bool(FilterMode)> mCallbacksFilterModeStateChanged;
+	CallbackMgr<bool(State*)> mCallbacksPlaylistStateChanged;
+	CallbackMgr<bool(State*)> mCallbacksAlphaCharStateChanged;	
 	CallbackMgr<bool(Node*)> mCallbacksNodeSelected;
 	CallbackMgr<bool(NodeTrack*)> mCallbacksNodePlaying;
 

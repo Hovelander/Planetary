@@ -3,140 +3,163 @@
  *  Bloom
  *
  *  Created by Robert Hodgin on 2/7/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
 
-#include "cinder/gl/gl.h"
 #include "UiLayer.h"
 #include "CinderFlurry.h"
 #include "Globals.h"
 #include "BloomGl.h"
-#include "BloomScene.h"
 
 using namespace pollen::flurry;
 using namespace ci;
 using namespace ci::app;
 using namespace std;
 
-void UiLayer::setup( PlaylistChooserRef playlistChooser, 
-                     AlphaChooserRef alphaChooser, 
-                     PlayControlsRef playControls, 
-                     SettingsPanelRef settingsPanel,
-                     const gl::Texture &uiButtonsTex, 
-                     const bool &showSettings, 
-                     const Vec2f interfaceSize )
+UiLayer::UiLayer()
 {
-    mPlaylistChooser = playlistChooser;
-    mAlphaChooser = alphaChooser;
-    mPlayControls = playControls;
-    mSettingsPanel = settingsPanel;
-    
-    mButtonsTex				= uiButtonsTex;
+	mPanelOpenHeight		= 65.0f;
+	mPanelSettingsHeight	= 150.0f;    
+}
+
+UiLayer::~UiLayer()
+{
+	mApp->unregisterTouchesBegan( mCbTouchesBegan );
+	mApp->unregisterTouchesMoved( mCbTouchesMoved );
+	mApp->unregisterTouchesEnded( mCbTouchesEnded );
+}
+
+void UiLayer::setup( AppCocoaTouch *app, const Orientation &orientation, const bool &showSettings )
+{
+	mApp = app;
 	
+	mCbTouchesBegan       = mApp->registerTouchesBegan( this, &UiLayer::touchesBegan );
+	mCbTouchesMoved       = mApp->registerTouchesMoved( this, &UiLayer::touchesMoved );
+	mCbTouchesEnded       = mApp->registerTouchesEnded( this, &UiLayer::touchesEnded );
+
     mIsPanelOpen			= false;
 	mIsPanelTabTouched		= false;
 	mHasPanelBeenDragged	= false;
 
-    // set now, needed in setShowSettings and updateLayout
-    mInterfaceSize = interfaceSize;
+    // set this to something sensible, *temporary*:
+    mPanelRect = Rectf(0, getWindowHeight(), getWindowWidth(), getWindowHeight() + mPanelSettingsHeight);
+	mPanelUpperRect = Rectf(0, getWindowHeight(), getWindowWidth(), getWindowHeight() + mPanelSettingsHeight);
+	mPanelLowerRect = Rectf(0, getWindowHeight(), getWindowWidth(), getWindowHeight() + mPanelSettingsHeight);
+    
+    // make sure we've got everything the right way around
+    setInterfaceOrientation(orientation);
 
-    // these rectangles are essentially constant (except for width), movement is handled by setTransform
-    mPanelTabRect   = Rectf( interfaceSize.x - 200.0f, -42.0f, interfaceSize.x, 2.0f );
-    
-    // make sure we're showing enough, then update layout
+    // and make sure we're showing enough
     setShowSettings(showSettings);    
-    
-    updateLayout( interfaceSize );
 }
 
 void UiLayer::setShowSettings( bool visible ) 
 {
-    mPanelOpenY	= mInterfaceSize.y - getPanelHeight();        
+	if( visible ){
+		mPanelHeight = mPanelSettingsHeight;
+	} else {
+		mPanelHeight = mPanelOpenHeight;
+	}
+    
+    mPanelOpenY		= mInterfaceSize.y - mPanelHeight;
+    mPanelClosedY	= mInterfaceSize.y;
 }
 
-void UiLayer::updateLayout( Vec2f interfaceSize )
-{    
-    mPanelTabRect.x1 = interfaceSize.x - 200.0f;
-    mPanelTabRect.x2 = interfaceSize.x;    
+void UiLayer::setInterfaceOrientation( const Orientation &orientation )
+{
+    mInterfaceOrientation = orientation;
     
-    mPanelOpenY		= interfaceSize.y - getPanelHeight();
-    mPanelClosedY	= interfaceSize.y;
+    mOrientationMatrix = getOrientationMatrix44(mInterfaceOrientation, getWindowSize());
+    
+    mInterfaceSize = getWindowSize();
+    
+    if ( isLandscapeOrientation( mInterfaceOrientation ) ) {
+        mInterfaceSize = mInterfaceSize.yx(); // swizzle it!
+    }
+    
+    mPanelRect.x2 = mInterfaceSize.x;
+    
+    mPanelOpenY		= mInterfaceSize.y - mPanelHeight;
+    mPanelClosedY	= mInterfaceSize.y;
     
     // cancel interactions
     mIsPanelTabTouched   = false;
     mHasPanelBeenDragged = false;
     
-    // set dests for sub-panels
-    mSettingsDestY = mPlayControls->getHeight();
-    mChooserDestY = mPlayControls->getHeight();
-    if ( isShowingFilter() ) {
-        mSettingsDestY += max(mAlphaChooser->getHeight(), mPlaylistChooser->getHeight());
-    }
-    
     // jump to end of animation
     if ( mIsPanelOpen ) {
-        mPanelY = mPanelOpenY;        
-        mSettingsY = mSettingsDestY;
-        mChooserY = mChooserDestY;
+        mPanelRect.y1 = mPanelOpenY;        
     }
     else {
-        mPanelY = mPanelClosedY;        
+        mPanelRect.y1 = mPanelClosedY;        
     }
-    
-    mInterfaceSize = interfaceSize;
 }
 
-bool UiLayer::touchBegan( TouchEvent::Touch touch )
+bool UiLayer::touchesBegan( TouchEvent event )
 {
 	mHasPanelBeenDragged = false;
 
-	Vec2f touchPos = globalToLocal( touch.getPos() );
+	Vec2f touchPos = event.getTouches().begin()->getPos();
 
-    mIsPanelTabTouched = mPanelTabRect.contains( touchPos );
+    // find where mPanelTabRect is being drawn in screen space (i.e. touchPos space)
+    Rectf screenTabRect = transformRect(mPanelTabRect, mOrientationMatrix);
+
+    mIsPanelTabTouched = screenTabRect.contains( touchPos );
     
 	if( mIsPanelTabTouched ){
         // remember touch offset for accurate dragging
-		mPanelTabTouchOffset = mPanelTabRect.getUpperLeft() - touchPos;
+		mPanelTabTouchOffset = Vec2f(screenTabRect.x1, screenTabRect.y1) - touchPos;
 	}
 		
 	return mIsPanelTabTouched;
 }
 
-bool UiLayer::touchMoved( TouchEvent::Touch touch )
+bool UiLayer::touchesMoved( TouchEvent event )
 {
-	Vec2f touchPos = globalToLocal( touch.getPos() );
+	Vec2f touchPos = event.getTouches().begin()->getPos();
     
 	if( mIsPanelTabTouched ){
 		mHasPanelBeenDragged = true;
 
-        // apply the touch pos and offset
+        // find where mPanelTabRect is being drawn in screen space (i.e. touchPos space)
+        Rectf screenTabRect = transformRect(mPanelTabRect, mOrientationMatrix);
+        
+        // apply the touch pos and offset in screen space
         Vec2f newPos = touchPos + mPanelTabTouchOffset;
-        mPanelY += newPos.y - mPanelTabRect.y1;
-		
-		const float maxPanelY = mInterfaceSize.y - getPanelHeight();
-		mPanelY = constrain( mPanelY, maxPanelY, mPanelClosedY );
+        screenTabRect.offset(newPos - screenTabRect.getUpperLeft());
+
+        // pull the screen-space rect back into mPanelTabRect space
+        Rectf tabRect = transformRect( screenTabRect, mOrientationMatrix.inverted() );
+
+        // set the panel position based on the new tabRect (mPanelTabRect will follow in update())
+        mPanelRect.y1 = tabRect.y2;
+        mPanelRect.y2 = mPanelRect.y1 + mPanelHeight;
 	}
 
 	return mIsPanelTabTouched;
 }
 
-bool UiLayer::touchEnded( TouchEvent::Touch touch )
+bool UiLayer::touchesEnded( TouchEvent event )
 {
+    // TODO: these touch handlers might need some refinement for multi-touch
+    // ... perhaps store the first touch ID in touchesBegan and reject other touches?
+    
     // decide if the open state should change:
 	if( mIsPanelTabTouched ){
 		if( mHasPanelBeenDragged ){
-            mIsPanelOpen = fabs(mPanelY - mPanelOpenY) < fabs(mPanelY - mPanelClosedY);
+            mIsPanelOpen = (mPanelRect.y1 - mPanelOpenY) < mPanelHeight/2.0f;
 		} 
         else {
             mIsPanelOpen = !mIsPanelOpen;
-//            if (mIsPanelOpen) {
-//                Flurry::getInstrumentation()->logEvent("UIPanel Opened");
-//            } else {
-//                Flurry::getInstrumentation()->logEvent("UIPanel Closed");
-//            }
+            if (mIsPanelOpen) {
+                Flurry::getInstrumentation()->logEvent("UIPanel Opened");
+            } else {
+                Flurry::getInstrumentation()->logEvent("UIPanel Closed");
+            }
 		}
+		G_HELP = false;
 	}
 
     // reset for next time
@@ -148,136 +171,58 @@ bool UiLayer::touchEnded( TouchEvent::Touch touch )
 
 void UiLayer::update()
 {
-    Vec2f interfaceSize = getRoot()->getInterfaceSize();
-    // check for orientation change
-    if( interfaceSize != mInterfaceSize ){
-        updateLayout( interfaceSize );
-    }
-
     if ( !mHasPanelBeenDragged ) {
         // if we're not dragging, animate to current state
         if( mIsPanelOpen ){
-            mPanelY += (mPanelOpenY - mPanelY) * 0.25f;
+            mPanelRect.y1 += (mPanelOpenY - mPanelRect.y1) * 0.25f;
         }
         else {
-            mPanelY += (mPanelClosedY - mPanelY) * 0.25f;
+            mPanelRect.y1 += (mPanelClosedY - mPanelRect.y1) * 0.25f;
         }
-    }
-    
-    mChooserY += (mChooserDestY - mChooserY) * 0.25f;
-    mSettingsY += (mSettingsDestY - mSettingsY) * 0.25f;
-    
-    mPlaylistChooser->setTransform( Matrix44f::createTranslation( Vec3f(0, mChooserY, 0) ) );
-    mAlphaChooser->setTransform( Matrix44f::createTranslation( Vec3f(0, mChooserY, 0) ) );
-    mSettingsPanel->setTransform( Matrix44f::createTranslation( Vec3f(0, mSettingsY, 0) ) );        
-
-    // don't use mPanelOpenY or current height as a constraint here, 
-    // use maximum value because we want things to ease closed
-    const float maxPanelY = mInterfaceSize.y - getMaxPanelHeight();
-    mPanelY = constrain( mPanelY, maxPanelY, mPanelClosedY );
-    
-    Matrix44f transform;
-    transform.translate( Vec3f( 0, ceil( mPanelY ), 0 ) );
-    setTransform( transform );
-}
-
-void UiLayer::draw()
-{	
-    gl::color( Color::white() );    
-    gl::draw( mButtonsTex, Area( 0, 456, 200, 500 ), mPanelTabRect);
-
-    // draw background for all sub-panels
-    gl::color( Color::black() );    
-    gl::drawSolidRect( Rectf(0.0f, 0.0f, mInterfaceSize.x, getMaxPanelHeight()) );
-    
-    // fuck maths, just figure out which is bigger and smaller and stop pretending to know...
-    const float minY = min(mPanelClosedY, mPanelOpenY);
-    const float maxY = max(mPanelClosedY, mPanelOpenY);
-    const float per = ( mPanelY - minY ) / ( maxY - minY );
-    // invert (1-per) because higher Y should be darker and lower Y should be lighter
-	const float dragAlphaPer = min( pow( 1.0f - per, 2.0f ), 1.0f ); 
-
-	// top highlight stroke
-    gl::color( ColorA( BRIGHT_BLUE, 0.1f * dragAlphaPer + 0.1f ) );
-	gl::drawLine( Vec2f( 0.0f, 0.0f ), Vec2f( mPanelTabRect.x1 + 22.0f, 0.0f ) );
+    } else {
+        // otherwise, just make sure the drag hasn't messed anything up
+		mPanelRect.y1 = constrain( mPanelRect.y1, mPanelOpenY, mPanelClosedY );
+	}
 	
-    // apply alpha to children
-    mPlayControls->setOpacity( dragAlphaPer );
-    mPlaylistChooser->setOpacity( dragAlphaPer );
-    mAlphaChooser->setOpacity( dragAlphaPer );
-    mSettingsPanel->setOpacity( dragAlphaPer );    
+    // keep up y2!
+    mPanelRect.y2 = mPanelRect.y1 + mPanelSettingsHeight;
+	
+	mPanelUpperRect = Rectf( 0.0f, mPanelRect.y1,							mInterfaceSize.x, mPanelRect.y1 + mPanelOpenHeight );
+	mPanelLowerRect = Rectf( 0.0f, mPanelRect.y1 + mPanelOpenHeight, mInterfaceSize.x, mPanelRect.y1 + mPanelSettingsHeight );
+	
+    // adjust tab rect:
+    mPanelTabRect = Rectf( mPanelRect.x2 - 200.0f, mPanelRect.y1 - 38.0f,
+                           mPanelRect.x2, mPanelRect.y1 + 2.0f );
+	
 }
 
-bool UiLayer::hitTest( Vec2f globalPos ) 
-{
-    if (mVisible) {
-        Vec2f pos = globalToLocal( globalPos );
-        return mPanelTabRect.contains(pos) || pos.y > mPanelTabRect.y2;
-    }
-    return false;
+void UiLayer::draw( const gl::Texture &uiButtonsTex )
+{	
+    glPushMatrix();
+    glMultMatrixf( mOrientationMatrix );
+
+    bloom::gl::beginBatch();
+    bloom::gl::batchRect(uiButtonsTex, Rectf(0.0, 0.71f, 0.09f, 0.79f), mPanelUpperRect);
+    bloom::gl::batchRect(uiButtonsTex, Rectf(0.0, 0.91f, 0.09f, 0.99f), mPanelLowerRect);
+    bloom::gl::batchRect(uiButtonsTex, Rectf(0.5f, 0.5f, 1.0f, 0.7f), mPanelTabRect);
+	gl::color( ColorA( 1.0f, 1.0f, 1.0f, 1.0f ) );    
+    bloom::gl::endBatch();
+
+    gl::color( ColorA( BRIGHT_BLUE, 0.2f ) );
+	gl::drawLine( Vec2f( mPanelRect.x1, round(mPanelRect.y1) ), Vec2f( mPanelTabRect.x1+23, round(mPanelRect.y1) ) );
+	
+	gl::color( ColorA( BRIGHT_BLUE, 0.1f ) );
+	gl::drawLine( Vec2f( mPanelRect.x1, mPanelRect.y1 + mPanelOpenHeight + 1.0f ), Vec2f( mPanelRect.x2, mPanelRect.y1 + mPanelOpenHeight + 1.0f ) );
+    
+    glPopMatrix();    
 }
 
-void UiLayer::setShowAlphaFilter(bool visible)
+// TODO: move this to an operator in Cinder's Matrix class?
+Rectf UiLayer::transformRect( const Rectf &rect, const Matrix44f &matrix )
 {
-    mAlphaChooser->setVisible(visible);
-    if (visible) {
-        mPlaylistChooser->setVisible(false);
-    }
-    // set dests for sub-panels
-    mSettingsDestY = mPlayControls->getHeight();
-    mChooserDestY = mPlayControls->getHeight();
-    if ( isShowingFilter() ) {
-        mSettingsDestY += max(mAlphaChooser->getHeight(), mPlaylistChooser->getHeight());
-    }     
-    mPanelOpenY	= mInterfaceSize.y - getPanelHeight();        
-}
-
-bool UiLayer::isShowingAlphaFilter()
-{
-    return mAlphaChooser->isVisible();
-}
-
-void UiLayer::setShowPlaylistFilter(bool visible)
-{
-    mPlaylistChooser->setVisible(visible);
-    if (visible) {
-        mAlphaChooser->setVisible(false);
-    }
-    // set dests for sub-panels
-    mSettingsDestY = mPlayControls->getHeight();
-    mChooserDestY = mPlayControls->getHeight();
-    if ( isShowingFilter() ) {
-        mSettingsDestY += max(mAlphaChooser->getHeight(), mPlaylistChooser->getHeight());
-    }    
-    mPanelOpenY	= mInterfaceSize.y - getPanelHeight();    
-}
-
-bool UiLayer::isShowingPlaylistFilter()
-{
-    return mPlaylistChooser->isVisible();
-}
-
-bool UiLayer::isShowingFilter()
-{
-    return isShowingPlaylistFilter() || isShowingAlphaFilter();
-}
-
-float UiLayer::getPanelHeight()
-{
-    float panelHeight = mPlayControls->getHeight();
-    if ( isShowingFilter() ) {
-        panelHeight += max( mPlaylistChooser->getHeight(), mAlphaChooser->getHeight() );
-    }
-    if (mSettingsPanel->isVisible()) {
-        panelHeight += mSettingsPanel->getHeight();
-    }
-    return panelHeight;
-}
-
-float UiLayer::getMaxPanelHeight()
-{
-    float panelHeight = mPlayControls->getHeight();
-    panelHeight += max( mPlaylistChooser->getHeight(), mAlphaChooser->getHeight() );
-    panelHeight += mSettingsPanel->getHeight();
-    return panelHeight;
+    Vec2f topLeft = (matrix * Vec3f(rect.x1,rect.y1,0)).xy();
+    Vec2f bottomRight = (matrix * Vec3f(rect.x2,rect.y2,0)).xy();
+    Rectf newRect(topLeft, bottomRight);
+    newRect.canonicalize();    
+    return newRect;
 }

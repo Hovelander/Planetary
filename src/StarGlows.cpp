@@ -3,7 +3,7 @@
 //  Kepler
 //
 //  Created by Tom Carden on 6/13/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #include "StarGlows.h"
@@ -40,12 +40,12 @@ void StarGlows::setup( const vector<NodeArtist*> &filteredNodes, const Vec3f &bb
 	
 	int vIndex = 0;
 	
-	for( vector<NodeArtist*>::const_iterator it = filteredNodes.begin(); it != filteredNodes.end(); ++it )
-	{
+	for( vector<NodeArtist*>::const_iterator it = filteredNodes.begin(); it != filteredNodes.end(); ++it ){
+
         Vec3f pos			= (*it)->mPos;
         float r				= (*it)->mRadius * ( (*it)->mEclipseStrength * 2.0f + 1.5f ); // HERE IS WHERE YOU CAN MAKE THE GLOW HUGER/BIGGER/AWESOMER
-        if( (*it)->mIsSelected )
-        	r				*= 0.1f;
+        //if( !(*it)->mIsSelected )
+        //	r				-= zoomAlpha;
         
         float alpha			= (*it)->mDistFromCamZAxisPer * ( 1.0f - (*it)->mEclipseStrength );
         //if( !(*it)->mIsSelected && !(*it)->mIsPlaying )

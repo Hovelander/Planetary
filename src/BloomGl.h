@@ -3,18 +3,16 @@
 //  Kepler
 //
 //  Created by Robert Hodgin on 4/7/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #pragma once
 
 #include <map>
 #include <vector>
-#include "cinder/Cinder.h"
 #include "cinder/Rect.h"
 #include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
-#include <boost/unordered_map.hpp>
 
 namespace bloom { namespace gl {
 
@@ -34,10 +32,9 @@ namespace bloom { namespace gl {
         std::vector<VertexData> vertices;
     };
     
-    typedef std::shared_ptr<Batch> BatchRef;
-    
-    extern boost::unordered_map<GLuint, BatchRef> batchByTex;
-    extern std::vector<BatchRef> batches;
+    typedef std::map<GLuint, Batch> BatchMap;
+
+    extern BatchMap batchMap;
     
     void beginBatch();
     void batchRect( const ci::gl::Texture &tex, const ci::Vec2f &pos );            

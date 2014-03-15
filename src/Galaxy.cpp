@@ -3,7 +3,7 @@
 //  Kepler
 //
 //  Created by Tom Carden on 6/9/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #include "Galaxy.h"
@@ -11,16 +11,26 @@
 
 using namespace ci;
 
+void Galaxy::update(const Vec3f &eye, const float &fadeInAlphaToArtist, const float &elapsedSeconds, const Vec3f &bbRight, const Vec3f &bbUp)
+{
+	// For doing galaxy-axis fades
+	mZoomOff = 1.0f - fadeInAlphaToArtist;//constrain( ( G_ARTIST_LEVEL - G_ZOOM ), 0.0f, 1.0f );
+	mCamGalaxyAlpha = constrain( abs( eye.y ) * 0.004f, 0.0f, 1.0f );
+	mInvAlpha = pow( 1.0f - mCamGalaxyAlpha, 2.5f ) * mZoomOff;    
+    mElapsedSeconds = elapsedSeconds;
+    mBbRight = bbRight;
+    mBbUp = bbUp;
+}
 
 void Galaxy::setup(float initialCamDist, ci::Color lightMatterColor, ci::Color centerColor,
-				   ci::gl::Texture galaxyDome, ci::gl::Texture galaxyTex, ci::gl::Texture darkMatterTex, ci::gl::Texture starGlowTex)
+ci::gl::Texture galaxyDome, ci::gl::Texture galaxyTex, ci::gl::Texture darkMatterTex, ci::gl::Texture starGlowTex)
 {
 	mDarkMatterCylinderRes = 48;    
     initGalaxyVertexArray();
     initDarkMatterVertexArray();    
-   	mLightMatterBaseRadius = initialCamDist * 0.6075f;
-	mDarkMatterBaseRadius = initialCamDist * 0.6375f;
-	
+   	mLightMatterBaseRadius = initialCamDist * 0.675f;
+	mDarkMatterBaseRadius = initialCamDist * 0.75f; 
+
     mLightMatterColor = lightMatterColor;
     mCenterColor = centerColor;
     
@@ -28,36 +38,20 @@ void Galaxy::setup(float initialCamDist, ci::Color lightMatterColor, ci::Color c
     mGalaxyTex = galaxyTex;
     mDarkMatterTex = darkMatterTex;
     mStarGlowTex = starGlowTex;
-	mElapsedSeconds = 0.0f;
-	mDistFromCamZAxis = 1000.0f;
 }
 
-void Galaxy::update( const Vec3f &eye, const float &fadeInAlphaToArtist, const float rotSpeed, const float eclipseAmt, const Vec3f &bbRight, const Vec3f &bbUp)
-{
-	// For doing galaxy-axis fades
-	mZoomOff		= ( 1.0f - fadeInAlphaToArtist ) * 0.9f + 0.1f;
-	mCamGalaxyAlpha = constrain( abs( eye.y ) * 0.0045f, 0.0f, 1.0f );
-	mInvAlpha		= pow( 1.0f - mCamGalaxyAlpha, 1.75f ) * ( mZoomOff + eclipseAmt );    
-    mElapsedSeconds += rotSpeed;
-    mBbRight		= bbRight;
-    mBbUp			= bbUp;
-	
-	mDistFromCamZAxis	= eye.length();//-cam.worldToEyeDepth( Vec3f::zero() );
-}
-
-
-void Galaxy::drawLightMatter( float fadeInAlphaToArtist )
+void Galaxy::drawLightMatter()
 {
 	gl::enableAdditiveBlending();
 	
-
     // LIGHTMATTER
 	if( mInvAlpha > 0.01f ){
-		gl::color( ColorA( mLightMatterColor, mInvAlpha ) );
+		gl::color( ColorA( mLightMatterColor, mInvAlpha * 2.0f ) );
         
-		float radius = mLightMatterBaseRadius;
+		const float radius = mLightMatterBaseRadius * 0.9f;
 		glPushMatrix();
         mGalaxyDome.enableAndBind();
+
         glBindBuffer(GL_ARRAY_BUFFER, mDarkMatterVBO);
         glVertexPointer( 3, GL_FLOAT, sizeof(VertexData), 0 ); // last arg becomes an offset instead of an address
         glTexCoordPointer( 2, GL_FLOAT, sizeof(VertexData), (void*)sizeof(Vec3f) ); // NB:- change if type of VertexData.vertex changes
@@ -66,22 +60,13 @@ void Galaxy::drawLightMatter( float fadeInAlphaToArtist )
         glEnableClientState( GL_VERTEX_ARRAY );
         glEnableClientState( GL_TEXTURE_COORD_ARRAY );
         
-		
-		float rotationSpeed = -mElapsedSeconds * 0.2f;
-        gl::scale( Vec3f( radius, radius, radius ) );
-        gl::rotate( Vec3f( 0.0f, rotationSpeed, 0.0f ) );
+        gl::scale( Vec3f( radius, radius * 0.69f, radius ) );
+        gl::rotate( Vec3f( 0.0f, mElapsedSeconds * -2.0f, 0.0f ) );
         glDrawArrays( GL_TRIANGLES, 0, 6 * mDarkMatterCylinderRes );
 		
-		if( G_IS_IPAD2 ){
-			gl::color( ColorA( mLightMatterColor, mInvAlpha * ( 1.0f - fadeInAlphaToArtist ) ) );
-			gl::scale( Vec3f( 1.15f, 1.15f, 1.15f ) );
-			gl::rotate( Vec3f( 0.0f, 50.0f, 0.0f ) );
-			glDrawArrays( GL_TRIANGLES, 0, 6 * mDarkMatterCylinderRes );
-			
-			gl::scale( Vec3f( 1.15f, 1.15f, 1.15f ) );
-			gl::rotate( Vec3f( 0.0f, 50.0f, 0.0f ) );
-			glDrawArrays( GL_TRIANGLES, 0, 6 * mDarkMatterCylinderRes );
-		}
+        gl::scale( Vec3f( 1.25, 1.15f, 1.25f ) );
+        gl::rotate( Vec3f( 0.0f, mElapsedSeconds * -0.5f, 0.0f ) );
+        glDrawArrays( GL_TRIANGLES, 0, 6 * mDarkMatterCylinderRes );
         
         glDisableClientState( GL_VERTEX_ARRAY );
         glDisableClientState( GL_TEXTURE_COORD_ARRAY );
@@ -93,7 +78,7 @@ void Galaxy::drawLightMatter( float fadeInAlphaToArtist )
 void Galaxy::drawSpiralPlanes()
 {	
     // GALAXY SPIRAL PLANES
-	const float alpha = mInvAlpha * mZoomOff;//( 1.25f - mCamGalaxyAlpha ) * mZoomOff;//sqrt(camGalaxyAlpha) * zoomOff;
+	const float alpha = ( 1.25f - mCamGalaxyAlpha ) * mZoomOff;//sqrt(camGalaxyAlpha) * zoomOff;
 	if( alpha > 0.01f ){
 
         gl::color( ColorA( 1.0f, 1.0f, 1.0f, alpha ) );
@@ -108,23 +93,18 @@ void Galaxy::drawSpiralPlanes()
 		glEnableClientState( GL_VERTEX_ARRAY );
 		glEnableClientState( GL_TEXTURE_COORD_ARRAY );
 		
-		if( G_IS_IPAD2 ){
-			gl::translate( Vec3f( 0.0f, 3.5f, 0.0f ) );
-			gl::rotate( Vec3f( 0.0f, -mElapsedSeconds * 0.2f, 0.0f ) );
-			glDrawArrays( GL_TRIANGLES, 0, 6 );
-			
-			gl::translate( Vec3f( 0.0f, -7.0f, 0.0f ) );
-			gl::rotate( Vec3f( 0.0f, -mElapsedSeconds * 0.2f, 0.0f ) );
-			glDrawArrays( GL_TRIANGLES, 0, 6 );
-			
-			gl::translate( Vec3f( 0.0f, 3.5f, 0.0f ) );
-			gl::scale( Vec3f( 0.5f, 0.5f, 0.5f ) );
-			gl::rotate( Vec3f( 0.0f, -mElapsedSeconds * 0.2f, 0.0f ) );
-			glDrawArrays( GL_TRIANGLES, 0, 6 );
-		} else {
-			gl::rotate( Vec3f( 0.0f, -mElapsedSeconds * 0.2f, 0.0f ) );
-			glDrawArrays( GL_TRIANGLES, 0, 6 );
-		}
+		gl::translate( Vec3f( 0.0f, 2.5f, 0.0f ) );
+		gl::rotate( Vec3f( 0.0f, mElapsedSeconds * -4.0f, 0.0f ) );
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
+		
+		gl::translate( Vec3f( 0.0f, -5.0f, 0.0f ) );
+		gl::rotate( Vec3f( 0.0f, mElapsedSeconds * -2.0f, 0.0f ) );
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
+		
+		gl::translate( Vec3f( 0.0f, 2.5f, 0.0f ) );
+		gl::scale( Vec3f( 0.5f, 0.5f, 0.5f ) );
+		gl::rotate( Vec3f( 0.0f, mElapsedSeconds * -15.0f, 0.0f ) );
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
 		
 		glDisableClientState( GL_VERTEX_ARRAY );
 		glDisableClientState( GL_TEXTURE_COORD_ARRAY );
@@ -136,13 +116,11 @@ void Galaxy::drawSpiralPlanes()
 void Galaxy::drawCenter()
 {
     // CENTER OF GALAXY
-	const float alpha = mInvAlpha * mZoomOff;//( 1.25f - mCamGalaxyAlpha ) * mZoomOff;
-	
-	if( alpha > 0.01f ){
+	if( mInvAlpha > 0.01f ){
 		mStarGlowTex.enableAndBind();
-		gl::color( ColorA( BRIGHT_BLUE, alpha ) );
-		gl::drawBillboard( Vec3f::zero(), Vec2f( 400.0f, 400.0f ), mElapsedSeconds * 10.0f, mBbRight, mBbUp );
-		gl::color( ColorA( BRIGHT_YELLOW, alpha ) );
+		gl::color( ColorA( mCenterColor, mInvAlpha ) );
+		gl::drawBillboard( Vec3f::zero(), Vec2f( 300.0f, 300.0f ), mElapsedSeconds * 10.0f, mBbRight, mBbUp );
+		gl::color( ColorA( mCenterColor, mInvAlpha * 1.5f ) );
 		gl::drawBillboard( Vec3f::zero(), Vec2f( 200.0f, 200.0f ), -mElapsedSeconds * 7.0f, mBbRight, mBbUp );
 		mStarGlowTex.disable();
 	}
@@ -150,13 +128,15 @@ void Galaxy::drawCenter()
 
 void Galaxy::drawDarkMatter()
 {
-	float radius	= mDarkMatterBaseRadius;
-	float multi		= 1.15f;
     // DARKMATTER //////////////////////////////////////////////////////////////////////////////////////////
 	if( mInvAlpha > 0.01f ){
 		glEnable( GL_CULL_FACE ); 
 		glCullFace( GL_FRONT ); 
-
+		
+        //float alpha = pow( 1.0f - camGalaxyAlpha, 8.0f ) * zoomOff;
+		gl::color( ColorA( 1.0f, 1.0f, 1.0f, mInvAlpha ) );
+		const float radius = mDarkMatterBaseRadius * 0.85f;
+        
 		glPushMatrix();
 		mDarkMatterTex.enableAndBind();
         
@@ -168,39 +148,13 @@ void Galaxy::drawDarkMatter()
         glTexCoordPointer( 2, GL_FLOAT, sizeof(VertexData), (void*)sizeof(Vec3f) ); // NB:- change if type of VertexData.vertex changes
         glBindBuffer(GL_ARRAY_BUFFER, 0); // Leave no VBO bound.                
         
-		float rotationSpeed = -mElapsedSeconds * 0.2f;
+		gl::rotate( Vec3f( 0.0f, mElapsedSeconds * -2.0f, 0.0f ) );
+		gl::scale( Vec3f( radius, radius * 0.5f, radius ) );
+        glDrawArrays( GL_TRIANGLES, 0, 6 * mDarkMatterCylinderRes );
 		
-		float delta		= constrain( ( mDistFromCamZAxis - radius ) * 0.02f - 0.01f, 0.0f, 1.0f );
-		float alpha		= mInvAlpha * delta;
-		if( alpha > 0.0f ){
-			gl::color( ColorA( BRIGHT_BLUE, alpha ) );
-			gl::rotate( Vec3f( 0.0f, rotationSpeed, 0.0f ) );
-			gl::scale( Vec3f( radius, radius * 0.75f, radius ) );
-			glDrawArrays( GL_TRIANGLES, 0, 6 * mDarkMatterCylinderRes );
-		}
-		
-		if( G_IS_IPAD2 ){
-//			radius *= multi;
-//			delta		= constrain( ( mDistFromCamZAxis - radius ) * 0.03f - 0.01f, 0.0f, 1.0f );
-//			alpha		= mInvAlpha * delta;
-//			if( alpha > 0.0f ){
-//				gl::color( ColorA( BRIGHT_BLUE, alpha ) );
-//				gl::rotate( Vec3f( 0.0f, 50.0f, 0.0f ) );
-//				gl::scale( Vec3f( multi, multi, multi ) );
-//				glDrawArrays( GL_TRIANGLES, 0, 6 * mDarkMatterCylinderRes );
-//			}
-			
-			
-			radius *= multi;
-			delta		= constrain( ( mDistFromCamZAxis - radius ) * 0.02f - 0.01f, 0.0f, 1.0f );
-			alpha		= mInvAlpha * delta;
-			if( alpha > 0.0f ){
-				gl::color( ColorA( BRIGHT_BLUE, alpha ) );
-				gl::rotate( Vec3f( 0.0f, 50.0f, 0.0f ) );
-				gl::scale( Vec3f( multi, multi, multi ) );
-				glDrawArrays( GL_TRIANGLES, 0, 6 * mDarkMatterCylinderRes );
-			}
-		}
+		gl::rotate( Vec3f( 0.0f, mElapsedSeconds * -0.5f, 0.0f ) );
+		gl::scale( Vec3f( 1.3f, 1.3f, 1.3f ) );
+        glDrawArrays( GL_TRIANGLES, 0, 6 * mDarkMatterCylinderRes );
         
 		glDisableClientState( GL_VERTEX_ARRAY );
 		glDisableClientState( GL_TEXTURE_COORD_ARRAY );
@@ -212,11 +166,11 @@ void Galaxy::drawDarkMatter()
 
 void Galaxy::initGalaxyVertexArray()
 {
+	std::cout << "initializing Galaxy Vertex Array" << std::endl;
+    
 	VertexData *galaxyVerts = new VertexData[6];
 
-	float w = 200.0f;
-	if( G_IS_IPAD2 )
-		w = 350.0f;
+	const float w = 200.0f;
 
     int vert = 0;
 
@@ -255,6 +209,7 @@ void Galaxy::initGalaxyVertexArray()
 
 void Galaxy::initDarkMatterVertexArray()
 {
+	std::cout << "initializing Dark Matter Vertex Array" << std::endl;
 	VertexData *darkMatterVerts = new VertexData[ mDarkMatterCylinderRes * 6 ]; // cylinderRes * two-triangles
 
     const float TWO_PI = 2.0f * M_PI;
@@ -279,7 +234,7 @@ void Galaxy::initDarkMatterVertexArray()
 		Vec3f v3 = Vec3f( ca1,  h, sa1 );
 		Vec3f v4 = Vec3f( ca2,  h, sa2 );
 		
-        const float texRepeat = 2.0f;
+        const float texRepeat = G_USE_COMPRESSED ? 2.0f : 1.0f;
         
 		darkMatterVerts[vert].vertex = v1;
 		darkMatterVerts[vert].texture = Vec2f(per1 * texRepeat, 0.0f);

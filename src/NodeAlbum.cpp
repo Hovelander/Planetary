@@ -3,7 +3,7 @@
  *  Bloom
  *
  *  Created by Robert Hodgin on 1/21/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
@@ -40,6 +40,7 @@ NodeAlbum::NodeAlbum( Node *parent, int index, const Font &font, const Font &sma
     mShadowVerts = NULL;
     mShadowTexCoords = NULL;
 }
+
 
 void NodeAlbum::setData( PlaylistRef album )
 {	
@@ -97,7 +98,7 @@ void NodeAlbum::setData( PlaylistRef album )
 	mHasRings			= false;
 	if( mNumTracks > 2 ) mHasRings = true;
 	mTotalLength		= mAlbum->getTotalLength();
-//	std::cout<<"NodeAlbum total length = " << mTotalLength<<std::endl;
+	std::cout<<mTotalLength<<std::endl;
 	mReleaseYear		= (*mAlbum)[0]->getReleaseYear();
 	
 	mRadiusInit			= mParentNode->mRadiusDest * constrain( mTotalLength * 0.00004f, 0.01f, 0.06f );//Rand::randFloat( 0.01f, 0.035f );
@@ -132,7 +133,7 @@ void NodeAlbum::setData( PlaylistRef album )
 		hasAlbumArt = false;
 		mAlbumArtSurface = mNoAlbumArtSurface;
 	}
-	
+
 	int x			= (int)( mAsciiPer*halfWidth );
 	int y			= (int)( mAsciiPer*border );
 	
@@ -167,30 +168,30 @@ void NodeAlbum::setData( PlaylistRef album )
 			iter.b() = c.b * 255.0f;
 		}
 	}
-	//	
-	//	// fix the polar pinching
-	//	Surface::Iter iter2 = crop.getIter();
-	//	while( iter2.line() ) {
-	//		float cosTheta = cos( M_PI * ( iter2.y() - (float)( totalWidth - 1 )/2.0f ) / (float)( totalWidth - 1 ) );
-	//		
-	//		while( iter2.pixel() ) {
-	//			float phi	= TWO_PI * ( iter2.x() - halfWidth ) / (double)totalWidth;
-	//			float phi2	= phi * cosTheta;
-	//			int i2 = phi2 * totalWidth/TWO_PI + halfWidth;
-	//			
-	//			if( i2 < 0 || i2 > totalWidth-1 ){
-	//				// this should never happen
-	//				iter2.r() = 255.0f;
-	//				iter2.g() = 0.0f;
-	//				iter2.b() = 0.0f;
-	//			} else {
-	//				ColorA c = crop2.getPixel( Vec2i( i2, iter2.y() ) );
-	//				iter2.r() = c.r * 255.0f;
-	//				iter2.g() = c.g * 255.0f;
-	//				iter2.b() = c.b * 255.0f;
-	//			}
-	//		}
-	//	}
+//	
+//	// fix the polar pinching
+//	Surface::Iter iter2 = crop.getIter();
+//	while( iter2.line() ) {
+//		float cosTheta = cos( M_PI * ( iter2.y() - (float)( totalWidth - 1 )/2.0f ) / (float)( totalWidth - 1 ) );
+//		
+//		while( iter2.pixel() ) {
+//			float phi	= TWO_PI * ( iter2.x() - halfWidth ) / (double)totalWidth;
+//			float phi2	= phi * cosTheta;
+//			int i2 = phi2 * totalWidth/TWO_PI + halfWidth;
+//			
+//			if( i2 < 0 || i2 > totalWidth-1 ){
+//				// this should never happen
+//				iter2.r() = 255.0f;
+//				iter2.g() = 0.0f;
+//				iter2.b() = 0.0f;
+//			} else {
+//				ColorA c = crop2.getPixel( Vec2i( i2, iter2.y() ) );
+//				iter2.r() = c.r * 255.0f;
+//				iter2.g() = c.g * 255.0f;
+//				iter2.b() = c.b * 255.0f;
+//			}
+//		}
+//	}
 	
 	// add the planet texture
 	// and add the shadow from the cloud layer
@@ -216,14 +217,13 @@ void NodeAlbum::setData( PlaylistRef album )
 			iter.b() = constrain( final.b * 255.0f - 0.0f, 0.0f, 255.0f );// + 25.0f;
 		}
 	}
-	
+
     gl::Texture::Format fmt;
     fmt.enableMipmapping( true );
     fmt.setMinFilter( GL_LINEAR_MIPMAP_LINEAR );
 	
 	mAlbumArtTex		= gl::Texture( planetSurface, fmt );
 	mHasAlbumArt		= true;
-
 }
 
 
@@ -243,11 +243,9 @@ void NodeAlbum::update( float param1, float param2 )
 	mRelPos		= Vec3f( cos( mOrbitAngle ), 0.0f, sin( mOrbitAngle ) ) * mOrbitRadius;
 	mPos		= mParentNode->mPos + mRelPos;
 	
-	
-	
-	/////////////////////////
-	// CALCULATE ECLIPSE VARS
-    if( mParentNode->mDistFromCamZAxis > 0.0f && mDistFromCamZAxis > 0.0f && mIsHighlighted ) //&& ( mIsSelected || mIsPlaying )
+/////////////////////////
+// CALCULATE ECLIPSE VARS
+    if( mParentNode->mDistFromCamZAxis > 0.0f && mDistFromCamZAxis > 0.0f ) //&& ( mIsSelected || mIsPlaying )
 	{		
 		Vec2f p		= mScreenPos;
 		float r		= mSphereScreenRadius;
@@ -303,8 +301,8 @@ void NodeAlbum::update( float param1, float param2 )
 	}
 
 	mEclipseColor = ( mColor + Color::white() ) * 0.5f * ( 1.0f - mEclipseStrength * 0.5f );
-	// END CALCULATE ECLIPSE VARS
-	/////////////////////////////
+// END CALCULATE ECLIPSE VARS
+/////////////////////////////
 	
 	
 	
@@ -322,6 +320,9 @@ void NodeAlbum::drawEclipseGlow()
 
 void NodeAlbum::drawPlanet( const gl::Texture &tex )
 {	
+	// std::cout << mDistFromCamZAxis << std::endl;
+	// closer than 0.1? fade out?
+	
 	if( mDistFromCamZAxis > mRadius ){
         
 		glPushMatrix();
@@ -333,8 +334,7 @@ void NodeAlbum::drawPlanet( const gl::Texture &tex )
 		
 		
 		if( mIsHighlighted ){
-			const float eclipseAmt = ( 1.0f - mEclipseStrength ) * 0.5f + 0.5f;
-			gl::color( ColorA( eclipseAmt, eclipseAmt, eclipseAmt, mClosenessFadeAlpha * mBlockedBySunPer ) );
+			gl::color( ColorA( 1.0f, 1.0f, 1.0f, mClosenessFadeAlpha * mBlockedBySunPer ) );
 			gl::enableAlphaBlending();
 		} else {
 			gl::color( ColorA( BLUE, mClosenessFadeAlpha * mBlockedBySunPer ) );
@@ -345,10 +345,10 @@ void NodeAlbum::drawPlanet( const gl::Texture &tex )
 		// when the planet goes offscreen, the screenradius becomes huge. 
 		// so if the screen radius is greater than 600, assume it is offscreen and just render a lo-res version
 		// consider frustum culling?
-		if( mSphereScreenRadius < 800.0f ){
-			if( mSphereScreenRadius > 50.0f ){
+		if( mSphereScreenRadius < 500.0f ){
+			if( mSphereScreenRadius > 75.0f ){
                 mHiSphere->draw();
-			} else if( mSphereScreenRadius > 30.0f ){
+			} else if( mSphereScreenRadius > 35.0f ){
                 mMdSphere->draw();
 			} else if( mSphereScreenRadius > 10.0f ){
                 mLoSphere->draw();
@@ -369,7 +369,7 @@ void NodeAlbum::drawPlanet( const gl::Texture &tex )
 
 void NodeAlbum::drawClouds( const vector<gl::Texture> &clouds )
 {
-	if( mSphereScreenRadius > 5.0f && mDistFromCamZAxis > mRadius ){		
+	if( mSphereScreenRadius > 5.0f && mDistFromCamZAxisPer > 0.0f ){		
         
         // FIXME: by drawing this sphere twice, below, we bind and unbind the same vertex array - could be optimized? (maybe lodSphere->bind(), lodSphere->drawArrays(), lodSphere->unbind()?)
         BloomSphere *lodSphere = NULL;
@@ -377,10 +377,10 @@ void NodeAlbum::drawClouds( const vector<gl::Texture> &clouds )
 		// when the planet goes offscreen, the screenradius becomes huge. 
 		// so if the screen radius is greater than 500, assume it is offscreen and just render a lo-res version
 		// consider frustum culling?
-		if( mSphereScreenRadius < 800.0f ){
-			if( mSphereScreenRadius > 50.0f ){
+		if( mSphereScreenRadius < 500.0f ){
+			if( mSphereScreenRadius > 75.0f ){
                 lodSphere = mHiSphere;
-			} else if( mSphereScreenRadius > 30.0f ){
+			} else if( mSphereScreenRadius > 35.0f ){
                 lodSphere = mMdSphere;
 			} else if( mSphereScreenRadius > 10.0f ){
                 lodSphere = mLoSphere;
@@ -401,7 +401,9 @@ void NodeAlbum::drawClouds( const vector<gl::Texture> &clouds )
         
         const float radius = mRadius * mDeathPer + mCloudLayerRadius;
         const float alpha = constrain( ( 5.0f - mDistFromCamZAxis ) * 0.2f, 0.0f, 0.334f ) * mClosenessFadeAlpha;        
-
+        
+       
+		
         gl::scale( Vec3f( radius, radius, radius ) );
         gl::rotate( mAxialRot * Vec3f( 1.0f, 0.75f, 1.0f ) + Vec3f( 0.0f, 0.5f, 0.0f ) ); 
 		
@@ -412,8 +414,8 @@ void NodeAlbum::drawClouds( const vector<gl::Texture> &clouds )
 				gl::color( ColorA( 0.0f, 0.0f, 0.0f, alpha ) );
 				lodSphere->draw();
 			}
-			const float eclipseAmt = ( 1.0f - mEclipseStrength ) * 0.5f + 0.5f;
-			gl::color( ColorA( eclipseAmt, eclipseAmt, eclipseAmt, alpha * 2.0f ) );
+			
+			gl::color( ColorA( 1.0f, 1.0f, 1.0f, alpha * 2.0f ) );
 		} else {
 			gl::color( ColorA( BLUE, alpha * 2.0f ) );
 		}
@@ -432,34 +434,34 @@ void NodeAlbum::drawClouds( const vector<gl::Texture> &clouds )
 }
 
 
-void NodeAlbum::drawAtmosphere( const Vec3f &camEye, const Vec2f &center, const gl::Texture &tex, const gl::Texture &directionalTex, float pinchAlphaPer, float scaleSliderOffset )
+void NodeAlbum::drawAtmosphere( const Vec3f &camEye, const Vec2f &center, const gl::Texture &tex, const gl::Texture &directionalTex, float pinchAlphaPer )
 {
-	if( mClosenessFadeAlpha > 0.0f && mDistFromCamZAxis > mRadius ){		
+	if( mClosenessFadeAlpha > 0.0f ){		
 		float alpha = ( 1.0f - mScreenDistToCenterPer * 0.75f ) + mEclipseStrength;
 		alpha *= mDeathPer * mClosenessFadeAlpha * ( mBlockedBySunPer - 0.5f ) * 2.0f;
 		Vec2f radius( mRadius, mRadius );
-		radius *= ( 2.42f + scaleSliderOffset + max( ( mSphereScreenRadius - 160.0f ) * 0.001f, 0.0f ) ) * mDeathPer;
+		radius *= ( 2.42f + max( ( mSphereScreenRadius - 160.0f ) * 0.001f, 0.0f ) );
 		
-
-		if( mIsHighlighted ){
-			gl::color( ColorA( BRIGHT_BLUE, ( 1.0f + mEclipseStrength * 2.0f ) * mClosenessFadeAlpha ) );
-			tex.enableAndBind();
-			bloom::gl::drawSphericalBillboard( camEye, mPos, radius, 0.0f );
-			tex.disable();
+		gl::color( ColorA( BRIGHT_BLUE, 1.0f + mEclipseStrength * 2.0f ) );
+		tex.enableAndBind();
+		bloom::gl::drawSphericalBillboard( camEye, mPos, radius, 0.0f );
+		tex.disable();
+		
+		if( mIsHighlighted ){ // ONLY DRAW HIGHLIGHTED ATMOSPHERE IF NOT A GHOST PLANET
 			gl::color( ColorA( mColor, alpha * mEclipseDirBasedAlpha ) );
-		} else {
-			gl::color( ColorA( BRIGHT_BLUE, alpha * mEclipseDirBasedAlpha ) );
+			directionalTex.enableAndBind();
+			//bloom::gl::drawSphericalBillboard( camEye, mPos, Vec2f( mRadius, mRadius ) * 2.46f, -mEclipseAngle );
+			//bloom::gl::drawBillboard( mPos, radius, -mEclipseAngle, mBbRight, mBbUp );
+			bloom::gl::drawSphericalRotatedBillboard( mPos, camEye, mParentNode->mPos, radius );        
+	//		if( mIsPlaying ) std::cout << -toDegrees( mEclipseAngle ) << std::endl;
+			directionalTex.disable();
 		}
 		
-		
-		directionalTex.enableAndBind();
-		bloom::gl::drawSphericalRotatedBillboard( mPos, camEye, mParentNode->mPos, radius );        
-		directionalTex.disable();
 	}
 }
 
 
-void NodeAlbum::drawOrbitRing( float pinchAlphaPer, float camAlpha, const OrbitRing &orbitRing, float fadeInAlphaToArtist, float fadeInArtistToAlbum )
+void NodeAlbum::drawOrbitRing( float pinchAlphaPer, float camAlpha, const OrbitRing &orbitRing )
 {		
 	float newPinchAlphaPer = pinchAlphaPer;
 	if( G_ZOOM < G_ALBUM_LEVEL - 0.5f ){
@@ -469,12 +471,12 @@ void NodeAlbum::drawOrbitRing( float pinchAlphaPer, float camAlpha, const OrbitR
 	}
 	
 	if( mIsPlaying ){
-		gl::color( ColorA( BRIGHT_BLUE, 0.5f * camAlpha * fadeInAlphaToArtist ) );
+		gl::color( ColorA( BRIGHT_BLUE, 0.5f * camAlpha * mDeathPer ) );
 	} else {
 		if( mIsHighlighted ){
-			gl::color( ColorA( BLUE, 0.5f * camAlpha * fadeInAlphaToArtist ) );
+			gl::color( ColorA( BLUE, 0.5f * camAlpha * mDeathPer ) );
 		} else {
-			gl::color( ColorA( BLUE, 0.5f * camAlpha * fadeInAlphaToArtist * 0.3f ) );
+			gl::color( ColorA( BLUE, 0.5f * camAlpha * mDeathPer * 0.3f ) );
 		}
 	}
 	
@@ -485,7 +487,7 @@ void NodeAlbum::drawOrbitRing( float pinchAlphaPer, float camAlpha, const OrbitR
     orbitRing.drawHighRes();
 	glPopMatrix();
 	
-	Node::drawOrbitRing( pinchAlphaPer, camAlpha, orbitRing, fadeInAlphaToArtist, fadeInArtistToAlbum );
+	Node::drawOrbitRing( pinchAlphaPer, camAlpha, orbitRing );
 }
 
 
@@ -807,7 +809,7 @@ void NodeAlbum::setChildOrbitRadii()
 		orbitRadius += orbitOffset;
 	}
 	
-	mIdealCameraDist = orbitRadius * 2.0f;
+	mIdealCameraDist = orbitRadius * 2.5f;
 }
 
 float NodeAlbum::getReleaseYear()

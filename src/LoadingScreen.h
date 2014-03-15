@@ -3,34 +3,37 @@
 //  Kepler
 //
 //  Created by Tom Carden on 3/17/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #pragma once
 
+#include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
-#include "BloomNode.h"
+#include "cinder/app/AppCocoaTouch.h"
+#include "Orientation.h"
+#include "OrientationEvent.h"
 
-class LoadingScreen : public BloomNode {  
-  public:
-    void setup( const ci::gl::Texture &planetaryTex, const ci::gl::Texture &planetTex,
-               const ci::gl::Texture &backgroundTex, const ci::gl::Texture &starGlowTex );
-    void draw();
-    void update();
-    bool touchBegan( ci::app::TouchEvent::Touch touch ) { return isVisible(); };
-    bool touchMoved( ci::app::TouchEvent::Touch touch ) { return isVisible(); };
-    bool touchEnded( ci::app::TouchEvent::Touch touch ) { return isVisible(); };
-    void setTextureProgress( float prop );
-    void setArtistProgress( float prop );
-    void setPlaylistProgress( float prop );
-    bool isComplete(); // returns true if all the progress bars are done animating to their dests
-  private:
-    float mTextureProgress, mTextureProgressDest;
-    float mArtistProgress, mArtistProgressDest;
-    float mPlaylistProgress, mPlaylistProgressDest;
-    ci::gl::Texture mStarGlowTex;
+class LoadingScreen {  
+public:
+    void setup( ci::app::AppCocoaTouch *app, const ci::app::Orientation &orientation );
+    void setEnabled( bool enabled );
+    void draw( ci::gl::Texture starGlowTex );
+    void setInterfaceOrientation( const ci::app::Orientation &orientation );
+private:
+    
+    bool onTouchEvent(ci::app::TouchEvent event) { return mEnabled; };
+    
+    ci::app::AppCocoaTouch mApp;
+    bool mEnabled;
+    
 	ci::gl::Texture	mPlanetaryTex;
 	ci::gl::Texture mPlanetTex;
-	ci::gl::Texture mBackgroundTex;	
+	ci::gl::Texture mBackgroundTex;
+	
+    ci::app::AppCocoaTouch *app;
+    ci::CallbackId mCbOrientationChanged;
+    ci::app::Orientation mInterfaceOrientation;
+    ci::Matrix44f mOrientationMatrix;
     ci::Vec2f mInterfaceSize;
 };

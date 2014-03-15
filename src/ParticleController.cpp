@@ -66,12 +66,9 @@ void ParticleController::buildParticleVertexArray( float scaleOffset, Color c, f
 		float radius			= it->mRadius * ( 1.0f - it->mAgePer ) * scaleOffset;// * eclipseStrength;// * sin( it->mAgePer * M_PI );
 		float alpha				= constrain(it->mAgePer * eclipseStrength, 0.0f, 1.0f);
 		
-//		Vec3f right				= mBbRight * radius * it->mQuat;
-//		Vec3f up				= mBbUp * radius * it->mQuat;
-
-		Vec3f right				= Vec3f::yAxis() * radius * it->mQuat;
-		Vec3f up				= Vec3f::xAxis() * radius * it->mQuat;
-		
+		Vec3f right				= mBbRight * radius;
+		Vec3f up				= mBbUp * radius;
+				
 		Vec3f p1				= pos - right - up;
 		Vec3f p2				= pos + right - up;
 		Vec3f p3				= pos - right + up;
@@ -132,14 +129,14 @@ void ParticleController::buildDustVertexArray( float scaleOffset, Node *node, fl
     }
 
 	for( list<Dust>::iterator it = mDusts.begin(); it != mDusts.end(); ++it ){        
-		mDustVerts[vIndex].vertex = it->mPos; //0.7f
+		mDustVerts[vIndex].vertex = it->mPos * scaleOffset * 0.7f;
 		mDustVerts[vIndex].color = Vec4f(col.r, col.g, col.b, alpha * it->mAgePer);
         vIndex++;
 	}
 }
 	
 
-void ParticleController::drawParticleVertexArray( Node *node, float multi )
+void ParticleController::drawParticleVertexArray( Node *node )
 {
 	// PARTICLES
 	glEnableClientState( GL_VERTEX_ARRAY );
@@ -153,8 +150,6 @@ void ParticleController::drawParticleVertexArray( Node *node, float multi )
 	glPushMatrix();
 	if( node ){
 		gl::translate( node->mPos );
-		float radius = node->mRadius * multi + 0.007f;
-		gl::scale( Vec3f( radius, radius, radius ) );
 	}
 	glDrawArrays( GL_TRIANGLES, 0, mTotalParticleVertices );
 	glPopMatrix();
@@ -164,7 +159,7 @@ void ParticleController::drawParticleVertexArray( Node *node, float multi )
 	glDisableClientState( GL_COLOR_ARRAY );
 }
 
-void ParticleController::drawDustVertexArray( Node *node, float multi )
+void ParticleController::drawDustVertexArray( Node *node )
 {
 	// DUST
 	glEnableClientState( GL_VERTEX_ARRAY );
@@ -175,8 +170,6 @@ void ParticleController::drawDustVertexArray( Node *node, float multi )
 	glPushMatrix();
 	if( node ) {
 		gl::translate( node->mPos );
-		float radius = node->mRadius * multi + 0.007f;
-		gl::scale( Vec3f( radius, radius, radius ) );
     }
 	glDrawArrays( GL_POINTS, 0, mTotalDustVertices );
 	glPopMatrix();

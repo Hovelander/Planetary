@@ -3,14 +3,18 @@
  *  Kepler
  *
  *  Created by Robert Hodgin on 2/25/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
 #include "Data.h"
-#include "cinder/Utilities.h" // for toString
-#include "CinderFlurry.h"     // for loggin
-#include "TaskQueue.h"        // for backgrounding tasks
+#include "cinder/app/AppBasic.h"
+#include "cinder/gl/gl.h"
+#include "cinder/Rand.h"
+#include "cinder/Thread.h"
+#include "cinder/Text.h"
+#include "cinder/Utilities.h"
+#include "CinderFlurry.h"
 
 using namespace ci;
 using namespace ci::ipod;
@@ -25,26 +29,19 @@ void Data::setup()
 	
     if (mState != LoadStateLoading) {
         mState = LoadStateLoading;
-        mArtistProgress = 0.0f;
-        mPlaylistProgress = 0.0f;   
-        TaskQueue::pushTask( std::bind( std::mem_fun( &Data::backgroundInit ), this ) );
+        std::thread artistLoaderThread( &Data::backgroundInit, this );	
     }
 }
 
 void Data::backgroundInit()
 {
+	NSAutoreleasePool *autoreleasepool = [[NSAutoreleasePool alloc] init];
+	
 	Flurry::getInstrumentation()->startTimeEvent("Music Loading");
-
-	mPendingArtists = getArtists( std::bind1st( std::mem_fun(&Data::artistProgress), this ) );
-    mPendingPlaylists = getPlaylists( std::bind1st( std::mem_fun(&Data::playlistProgress), this ) );
-
-    map<string, string> params;
-    params["NumArtists"]   = toString( mPendingArtists.size() );
-    params["NumPlaylists"] = toString( mPendingPlaylists.size() );
-	Flurry::getInstrumentation()->stopTimeEvent("Music Loading", params);
+	mPendingArtists = getArtists();
+	cout << "got " << mPendingArtists.size() << " artists" << endl;
 	
 // QUICK FIX FOR GETTING MORE DATA ONTO THE ALPHAWHEEL
-    
 	string alphaString	= "ABCDEFGHIJKLMNOPQRSTUVWXYZ#";
 	for( int i=0; i<27; i++ ){
 		mNumArtistsPerChar[alphaString[i]] = 0;
@@ -80,7 +77,22 @@ void Data::backgroundInit()
 	}
 
 // END ALPHAWHEEL QUICK FIX
-	    
+	
+    map<string, string> params;
+    params["NumArtists"] = toString(mPendingArtists.size());
+    Flurry::getInstrumentation()->logEvent("Artists loaded", params);
+	
+	Flurry::getInstrumentation()->startTimeEvent("Playlists Loading");
+	mPendingPlaylists = getPlaylists();
+	cout << "got " << mPendingPlaylists.size() << " playlists" << endl;
+    params.clear();
+    params["NumPlaylists"] = toString( mPendingPlaylists.size());
+    Flurry::getInstrumentation()->logEvent("Playlists loaded", params);	
+		
+	Flurry::getInstrumentation()->stopTimeEvent("Music Loading");
+
+    [autoreleasepool release];	
+    
     mState = LoadStatePending;
 }
 

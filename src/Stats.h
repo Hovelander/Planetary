@@ -3,7 +3,7 @@
 //  Kepler
 //
 //  Created by Tom Carden on 6/10/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #pragma once
@@ -20,9 +20,7 @@ public:
     void setup(const ci::Font &font, const ci::Color &fpsColor, const ci::Color &color);
     void update(const float &fps, 
                 const float &playheadTime, 
-                const float &fov,
-				const float &camDist,
-				const float &pinchPer,
+                const float &fov, 
                 const float &currentLevel, 
                 const float &zoom);
     void draw(const ci::Matrix44f &orientationMatrix);

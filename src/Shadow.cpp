@@ -3,7 +3,7 @@
 //  Kepler
 //
 //  Created by Tom Carden on 6/25/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #include "cinder/CinderMath.h"
@@ -213,12 +213,12 @@ void Shadow::buildVerts( Vec3f p1, Vec3f p2, Vec3f p3, Vec3f p4 )
 	Vec3f v1 = ( p1 + p2 ) * 0.5f;	// midpoint between base vertices
 	Vec3f v2 = ( p3 + p4 ) * 0.5f;	// midpoint between end vertices
 	
-//    std::cout << v1 << " " 
-//              << v2 << " " 
-//              << p1 << " " 
-//              << p2 << " " 
-//              << p3 << " " 
-//              << p4 << std::endl;
+    std::cout << v1 << " " 
+              << v2 << " " 
+              << p1 << " " 
+              << p2 << " " 
+              << p3 << " " 
+              << p4 << std::endl;
     
 	mShadowVerts[i++]	= p1.x;		mShadowTexCoords[t++]	= 0.0f;
 	mShadowVerts[i++]	= p1.y;		mShadowTexCoords[t++]	= 0.2f;

@@ -3,7 +3,7 @@
 //  Kepler
 //
 //  Created by Tom Carden on 6/12/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #pragma once
@@ -14,7 +14,7 @@ namespace bloom {
 
     class BloomSphere
     {
-      public:
+    public:
         
         struct VertexData {
             ci::Vec3f vertex;
@@ -32,11 +32,12 @@ namespace bloom {
         void setup( int segments );
         void draw();
 
-      private:
+    private:
         
         bool mInited;
         GLuint mVBO;
-        int mNumVerts; 
+        int mNumVerts;
+        VertexData *mVerts; 
         
     };
     

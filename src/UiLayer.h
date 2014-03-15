@@ -3,95 +3,72 @@
  *  Bloom
  *
  *  Created by Robert Hodgin on 2/7/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
 #pragma once
-#include <vector>
+#include "cinder/app/AppCocoaTouch.h"
 #include "cinder/Vector.h"
+#include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
 #include "cinder/Rect.h"
 #include "cinder/Color.h"
 #include "cinder/Font.h"
-#include "BloomNode.h"
-#include "PlaylistChooser.h"
-#include "AlphaChooser.h"
-#include "PlayControls.h"
-#include "SettingsPanel.h"
+#include "Orientation.h"
+#include "OrientationEvent.h"
+#include <vector>
 
-class UiLayer : public BloomNode {
+class UiLayer {
  public:
 	
-    UiLayer(): 
-        BloomNode(), // get a default ID
-        mChooserY(0.0f), 
-        mSettingsY(0.0f), 
-        mChooserDestY(0.0f), 
-        mSettingsDestY(0.0f) 
-    { }; 
+    UiLayer();
+	~UiLayer();
     
-	~UiLayer() {};
-    
-	void	setup( PlaylistChooserRef playlistChooser, 
-                   AlphaChooserRef alphaChooser, 
-                   PlayControlsRef playControls, 
-                   SettingsPanelRef settingsPanel,
-                   const ci::gl::Texture &uiButtonsTex, 
-                   const bool &showSettings, 
-                   const ci::Vec2f interfaceSize );
+	enum	ButtonTexId { TEX_PANEL_UP, TEX_PANEL_UP_ON, TEX_PANEL_DOWN, TEX_PANEL_DOWN_ON };
 	
-    bool	touchBegan( ci::app::TouchEvent::Touch touch );
-	bool	touchMoved( ci::app::TouchEvent::Touch touch );
-	bool	touchEnded( ci::app::TouchEvent::Touch touch );
+	void	setup( ci::app::AppCocoaTouch *app, const ci::app::Orientation &orientation, const bool &showSettings );
+	
+    bool	touchesBegan( ci::app::TouchEvent event );
+	bool	touchesMoved( ci::app::TouchEvent event );
+	bool	touchesEnded( ci::app::TouchEvent event );
 
+    void    setInterfaceOrientation( const ci::app::Orientation &orientation );
     void    setShowSettings( bool visible );
     
-	void    update();
-	void    draw();
+	void	update();
+	void	draw( const ci::gl::Texture &uiButtonsTex );
     
-	float   getPanelYPos(){ return mPanelY; }	
-
+	float	getPanelYPos(){ return mPanelRect.y1; }	
+    ci::Rectf getPanelTabRect() { return mPanelTabRect; }
 	bool	getIsPanelOpen() { return mIsPanelOpen; }
 	void	setIsPanelOpen( bool b ){ mIsPanelOpen = b; mHasPanelBeenDragged = false; }
 	
-    bool    hitTest( ci::Vec2f globalPos );
-    
-    //// expand/collapse/query panels
-    void    setShowAlphaFilter(bool visible);
-    bool    isShowingAlphaFilter();
-    void    setShowPlaylistFilter(bool visible);
-    bool    isShowingPlaylistFilter();
-    bool    isShowingFilter();    
-    
  private:
-
-    void updateLayout( ci::Vec2f interfaceSize );
     
-    ci::Vec2f       mInterfaceSize; // for detecting orientation changes    
-    ci::gl::Texture mButtonsTex;
-    
-    float           mPanelY;                // used in setTransform
-    float           mPanelOpenY;            // updated in setShowSettings/updateLayout
-    float           mPanelClosedY;          // updated in updateLayout
+	ci::app::AppCocoaTouch *mApp;
+	ci::CallbackId	mCbTouchesBegan, mCbTouchesMoved, mCbTouchesEnded, mCbOrientationChanged;
+	
+	float			mPanelOpenHeight;
+	float			mPanelSettingsHeight;
+    float           mPanelHeight;           // varies depending on if settings are shown
+    float           mPanelOpenY;            // updated in orientationChanged, interfaceHeight-mPanelHeight
+    float           mPanelClosedY;          // updated in orientationChanged, interfaceHeight
+	ci::Rectf		mPanelRect;				// Rect defining the panel width and height
 	ci::Rectf		mPanelTabRect;			// Rect defining the panel tab
+	ci::Rectf		mPanelUpperRect;		// Rect defining the upper half of the panel (used only when drawing panel)
+	ci::Rectf		mPanelLowerRect;		// Rect defining the lower half of the panel (used only when drawing panel)
     
 	bool			mIsPanelTabTouched;		// Is the Panel Tab currently being touched
 	bool			mIsPanelOpen;			// Is the Panel fully open
 	bool			mHasPanelBeenDragged;   // Are we dragging or just animating?
-    ci::Vec2f		mPanelTabTouchOffset;	// Remember the touch position value when dragging	
-    
-    float           getPanelHeight();
-    float           getMaxPanelHeight();
-    
-    float           mChooserY, mSettingsY;
-    float           mChooserDestY, mSettingsDestY;
-    
-    PlaylistChooserRef mPlaylistChooser;
-    AlphaChooserRef    mAlphaChooser;
-    PlayControlsRef    mPlayControls;
-    SettingsPanelRef   mSettingsPanel;
-};
+    ci::Vec2f		mPanelTabTouchOffset;	// Remember the touch position value when dragging
+	
+    // TODO: use a Matrix32f (after we write one or someone adds one to Cinder - look at the Cairo one first)
+    ci::Matrix44f        mOrientationMatrix;     // For adjusting ui drawing and hitrects    
+    ci::app::Orientation mInterfaceOrientation;
+    ci::Vec2f            mInterfaceSize;
 
-typedef std::shared_ptr<UiLayer> UiLayerRef;
+    ci::Rectf   transformRect( const ci::Rectf &worldRect, const ci::Matrix44f &matrix );
+};
 

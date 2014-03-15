@@ -3,14 +3,12 @@
  *  Bloom
  *
  *  Created by Robert Hodgin on 1/21/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
 #include <map>
 #include <deque>
-#include <boost/foreach.hpp>
-#include <boost/functional/hash.hpp>
 #include "cinder/app/AppBasic.h"
 #include "cinder/Rand.h"
 #include "cinder/gl/gl.h"
@@ -31,6 +29,11 @@ NodeArtist::NodeArtist( int index, const Font &font, const Font &smallFont, cons
 	: Node( NULL, index, font, smallFont, hiResSurfaces, loResSurfaces, noAlbumArt )
 {
 	mGen			= G_ARTIST_LEVEL;
+	//mPosDest		= Rand::randVec3f() * Rand::randFloat( 40.0f, 75.0f ); // 40.0f, 200.0f
+	Vec2f randVec	= Rand::randVec2f();
+	randVec			*= Rand::randFloat( 30.0f, 65.0f );
+	mPosDest		= Vec3f( randVec.x, Rand::randFloat( -0.5f, 0.5f ), randVec.y );
+	mPos			= mPosDest;// + Rand::randVec3f() * 25.0f;
 	mAcc			= Vec3f::zero();
 	
 	mAge			= 0.0f;
@@ -49,23 +52,6 @@ void NodeArtist::setData( PlaylistRef playlist )
     mId = mPlaylist->getArtistId();
     
 	string name		= getName();
-
-	boost::hash<std::string> string_hash;
-	std::size_t h	= string_hash( name );
-	
-	mHashPer		= (float)( h%9000L )/90.0f + 10.0f;
-	
-	float angle		= (float)mIndex * 0.618f;
-	float x			= cos( angle );
-	float y			= sin( angle );
-	Vec2f v			= Vec2f( x, y );
-	v				*= mHashPer;
-	float height	= mHashPer * 0.2f - 10.0f;
-	mPosDest		= Vec3f( v.x, height, v.y );
-	mPos			= mPosDest;// + Rand::randVec3f() * 25.0f;
-	
-	
-	
 	char c1			= ' ';
 	char c2			= ' ';
 	if( name.length() >= 3 ){
@@ -142,21 +128,6 @@ void NodeArtist::update( float param1, float param2 )
 	mEclipseStrength = constrain( mEclipseStrength, 0.0f, 1.0f );
 }
 
-
-void NodeArtist::drawStarGlow( const Vec3f &camEye, const Vec3f &camNormal, const gl::Texture &tex )
-{
-	Vec2f radius = Vec2f( mRadius, mRadius ) * 15.0f;// * ( mEclipseStrength * 2.0f + 1.5f );
-	
-	float alpha			= mDistFromCamZAxisPer * ( 1.0f - mEclipseStrength );
-	Color c             = mGlowColor;
-	gl::color( ColorA( c.r, c.g, c.b, alpha ) );
-	
-	tex.enableAndBind();
-	bloom::gl::drawSphericalRotatedBillboard( mPos, camEye, Vec3f::zero(), radius * sin( ( mEclipseStrength * 0.75f + 0.25f ) * M_PI ) * sin( mEclipseStrength * 1.0f + 0.4f ) );
-	tex.disable();
-}
-
-
 // NOT BEING USED AT THE MOMENT
 void NodeArtist::drawEclipseGlow()
 {
@@ -212,7 +183,7 @@ void NodeArtist::drawPlanet( const gl::Texture &tex )
 	}
 }
 
-void NodeArtist::drawAtmosphere( const Vec3f &camEye, const Vec2f &center, const gl::Texture &tex, const gl::Texture &directionalTex, float pinchAlphaPer, float scaleSliderOffset )
+void NodeArtist::drawAtmosphere( const Vec3f &camEye, const Vec2f &center, const gl::Texture &tex, const gl::Texture &directionalTex, float pinchAlphaPer )
 {
 	if( mIsHighlighted ){
 		float alpha = ( 1.0f - mScreenDistToCenterPer * 0.75f );
@@ -230,22 +201,25 @@ void NodeArtist::drawAtmosphere( const Vec3f &camEye, const Vec2f &center, const
 	//}
 }
 
-void NodeArtist::drawExtraGlow( const Vec3f &camEye, const gl::Texture &texGlow, const gl::Texture &texCore )
+void NodeArtist::drawExtraGlow( const gl::Texture &texGlow, const gl::Texture &texCore )
 {
 	if( mIsHighlighted ){
-		float alpha = ( 1.0f - mScreenDistToCenterPer ) * sin( mEclipseStrength * M_PI_2 + M_PI_2 ) * mDeathPer;
+		float alpha = ( 1.0f - mScreenDistToCenterPer ) * sin( mEclipseStrength * M_PI_2 + M_PI_2 );
+
+		alpha *= mDeathPer;
+
 		Vec2f radius = Vec2f( mRadius, mRadius ) * 7.5f;
 		
-//		texCore.enableAndBind();
-//		gl::color( ColorA( mGlowColor, alpha * 0.1f ) );
-//		bloom::gl::drawBillboard( mPos, radius * 1.25f, 0.0f, mBbRight, mBbUp );
-//		texCore.enableAndBind();
+		
+		texCore.enableAndBind();
+		gl::color( ColorA( mGlowColor, alpha * 0.1f ) );
+		bloom::gl::drawBillboard( mPos, radius * 1.25f, 0.0f, mBbRight, mBbUp );
+		texCore.enableAndBind();
 		
 	// SMALLER INNER GLOW
 		texGlow.enableAndBind();
-		alpha = sin( ( mEclipseStrength * 0.75f + 0.25f ) * M_PI ) * sin( mEclipseStrength * 0.4f + 0.2f );
-		gl::color( ColorA( Color::white(), alpha ) );
-		bloom::gl::drawSphericalRotatedBillboard( mPos, camEye, Vec3f::zero(), radius * sin( ( mEclipseStrength * 0.75f + 0.25f ) * M_PI ) * sin( mEclipseStrength * 1.0f + 0.4f ) );
+		gl::color( ColorA( Color::white(), sin( ( mEclipseStrength * 0.75f + 0.25f ) * M_PI ) * sin( mEclipseStrength * 0.4f + 0.2f ) ) );
+		bloom::gl::drawBillboard( mPos, radius * sin( ( mEclipseStrength * 0.75f + 0.25f ) * M_PI ) * sin( mEclipseStrength * 1.0f + 0.4f ), 0.0f, mBbRight, mBbUp );
 		texGlow.disable();
 	}
 	//}
@@ -265,11 +239,12 @@ void NodeArtist::select()
             
 			int i=0;
 			int trackcount = 0;
-            BOOST_FOREACH(PlaylistRef album, albums) {
+			for(vector<PlaylistRef>::iterator it = albums.begin(); it != albums.end(); ++it){
+				PlaylistRef album	= *it;
 				NodeAlbum *newNode = new NodeAlbum( this, i, mFont, mSmallFont, mHighResSurfaces, mLowResSurfaces, mNoAlbumArtSurface );
                 newNode->setSphereData( mHiSphere, mMdSphere, mLoSphere, mTySphere );
 				mChildNodes.push_back( newNode );
-				trackcount += album->size();
+				trackcount += album->m_tracks.size();
 				newNode->setData( album );
 				i++;
 			}
@@ -304,12 +279,12 @@ void NodeArtist::setChildOrbitRadii()
 		float orbitOffset = 1.25f;
 		for( vector<Node*>::iterator it = mChildNodes.begin(); it != mChildNodes.end(); ++it ){
 			NodeAlbum* albumNode = (NodeAlbum*)(*it);
-			float amt = math<float>::max( albumNode->mNumTracks * 0.065f, 0.2f );
+			float amt = math<float>::max( albumNode->mNumTracks * 0.05f, 0.2f );
 			orbitOffset += amt;
 			(*it)->mOrbitRadiusDest = orbitOffset;
 			orbitOffset += amt;
 		}
-		mIdealCameraDist = orbitOffset * 2.6f;
+		mIdealCameraDist = orbitOffset * 2.5f;
 	}
 }
 

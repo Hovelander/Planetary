@@ -3,7 +3,7 @@
 //  Kepler
 //
 //  Created by Tom Carden on 5/25/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #pragma once
@@ -11,35 +11,41 @@
 #include "cinder/Font.h"
 #include "cinder/Color.h"
 #include "cinder/gl/Texture.h"
+#include "cinder/Text.h"
 #include "cinder/Rect.h"
-#include "BloomNode.h"
+#include "cinder/Utilities.h"
+#include "UIElement.h"
 
-class TextLabel : public BloomNode {
+using namespace ci;
+using namespace std;
+
+class TextLabel : public UIElement {
     
 public:
     
-    TextLabel(const int &id, const ci::Font &font, const ci::Color &color): BloomNode(id), mFont(font), mColor(color) {}
+    TextLabel() {}
     ~TextLabel() {}
     
-    virtual bool touchBegan(ci::app::TouchEvent::Touch touch);
-    virtual bool touchEnded(ci::app::TouchEvent::Touch touch);    
-    virtual void draw();
+    void setup(const int &id, const Font &font, const Color &color)
+    {
+        UIElement::setup(id);
+        mFont = font;
+        mColor = color;
+    }
+    
+    void draw();
 
-    void setText(std::string text);
+    void setText(string text);
 
-    void setRect(const ci::Rectf &rect) { mRect = rect; }
-    void setRect(const float &x1, const float &y1, const float &x2, const float &y2) { mRect.set(x1,y1,x2,y2); }
-    const ci::Rectf& getRect() const { return mRect; }
 
 private:
     
     void updateTexture();
     
-    ci::Font mFont;
-    ci::Color mColor;
-    std::string mText;
-    ci::Rectf mRect;
+    Font mFont;
+    Color mColor;
+    string mText;
 
-    ci::gl::Texture mTexture;
+    gl::Texture mTexture;
     
 };

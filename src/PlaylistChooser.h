@@ -3,104 +3,78 @@
 //  Kepler
 //
 //  Created by Tom Carden on 7/10/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #pragma once
 
 #include <vector>
-#include <map>
-
 #include "cinder/app/AppCocoaTouch.h"
 #include "cinder/gl/TextureFont.h"
 #include "cinder/Font.h"
 #include "cinder/Color.h"
 #include "cinder/Camera.h"
-
 #include "CinderIPod.h"
-
+#include "OrientationHelper.h"
 #include "Data.h"
 #include "World.h"
-#include "BloomNode.h"
 
-class PlaylistChooser;
-typedef std::shared_ptr<PlaylistChooser> PlaylistChooserRef;
-
-typedef std::shared_ptr<ci::Rectf> RectRef;
-
-class PlaylistChooser : public BloomNode {
+class PlaylistChooser {
 
 public:    
     
-    PlaylistChooser(): mData(NULL), mOffsetX(0.0f), mOpacity(1.0f) {}
+    PlaylistChooser(): mData(NULL), mVisible(false), offsetX(0.0f), mCurrentPlaylistIndex(-1) {}
     
-    void setup( const ci::Font &font, const ci::Vec2f &interfaceSize );
-	void update();
+    void setup( ci::app::AppCocoaTouch *app, const ci::app::Orientation &orientation, const ci::Font &font, const ci::Color &lineColor );
     void draw();
 
-    bool touchBegan( ci::app::TouchEvent::Touch touch );
-    bool touchMoved( ci::app::TouchEvent::Touch touch );
-    bool touchEnded( ci::app::TouchEvent::Touch touch );
+    void setVisible( bool visible = true ) { mVisible = visible; }
+    bool isVisible() { return mVisible; }
     
+    void setInterfaceOrientation( const ci::app::Orientation &orientation );    
+    void setCurrentPlaylistIndex( int index ) { mCurrentPlaylistIndex = index; } // -1 is "none"
     void setDataWorldCam(Data *data, World *world, ci::CameraPersp *cam);
 
     template<typename T>
 	ci::CallbackId registerPlaylistSelected( T *obj, bool ( T::*callback )( ci::ipod::PlaylistRef ) ){
 		return mCbPlaylistSelected.registerCb(std::bind1st( std::mem_fun( callback ), obj ) );
 	}
-
-    template<typename T>
-	ci::CallbackId registerPlaylistTouched( T *obj, bool ( T::*callback )( ci::ipod::PlaylistRef ) ){
-		return mCbPlaylistTouched.registerCb(std::bind1st( std::mem_fun( callback ), obj ) );
-	}
-    
-    bool hitTest( ci::Vec2f globalPos ) { return mVisible && mFullRect.contains( globalToLocal( globalPos ) ); }
-
-    // used in UiLayer layout...
-    float getHeight();
-    
-    void setOpacity( float opacity ) { mOpacity = opacity; }
-
-    void clearTextures() { mTextures.clear(); }
     
 private:
     
-	float			getAlpha( float x );
-	void            makeTexture( int index, ci::ipod::PlaylistRef playlist );
-	
-	int				mNumPlaylists;	
-	int				mCurrentIndex;
-	int				mPrevIndex;
-	
-	ci::Vec2i		mTouchPos, mTouchPrevPos;
-	float			mTouchVel;
-	uint64_t		mTouchDragId;
-    ci::Vec2f		mTouchDragStartPos;
-    float			mTouchDragStartOffset;
-    int				mTouchDragPlaylistIndex;
-    bool			mIsDragging;
-	
-	ci::Vec2f		mPlaylistSize;
-	float			mSpacerWidth;
-	float			mOffsetX;		// for scrolling
-	float			mStartY;
-    
-    float           mOpacity;
+    struct ScissorRect {
+        float x, y, w, h;  
+    };
 
-    ci::Rectf       mFullRect;
+    bool mVisible;
+    float offsetX; // for scrolling
     
-    std::vector<RectRef> mPlaylistRects;
-	
-	std::vector<ci::gl::Texture> mTextures;
-        
-    Data			*mData;  // for playlists
-    World			*mWorld; // for nodes
-    ci::CameraPersp *mCam;   // for projecting to screen
-
-    ci::Font		mFont;
-    float           mFontHeight;
+    std::vector<ci::Rectf> mPlaylistRects;
     
-    ci::Vec2f		mInterfaceSize;
-			
-	ci::CallbackMgr<bool(ci::ipod::PlaylistRef)> mCbPlaylistSelected, mCbPlaylistTouched;        
+    uint64_t mTouchDragId;
+    ci::Vec2f mTouchDragStartPos;
+    float mTouchDragStartOffset;
+    int mTouchDragPlaylistIndex;
+    
+    int mCurrentPlaylistIndex; // set from main app, passive
+    
+    bool touchesBegan( ci::app::TouchEvent event );
+    bool touchesMoved( ci::app::TouchEvent event );
+    bool touchesEnded( ci::app::TouchEvent event );
+    
+    Data *mData; // for playlists
+    World *mWorld; // for nodes
+    ci::CameraPersp *mCam; // for projecting to screen
+    
+    ci::gl::TextureFontRef mTextureFont;
+    ci::Color mLineColor;
+    ci::Font mFont;
+    
+    ci::app::Orientation mInterfaceOrientation;
+    ci::Matrix44f mOrientationMatrix;
+    ci::Vec2f mInterfaceSize; 
+    
+	ci::CallbackMgr<bool(ci::ipod::PlaylistRef)> mCbPlaylistSelected;        
+    
+    void getWindowSpaceRect( float &x, float &y, float &w, float &h );
 };

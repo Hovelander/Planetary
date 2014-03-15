@@ -3,21 +3,22 @@
  *  Kepler
  *
  *  Created by Robert Hodgin on 2/25/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
 #pragma once 
-
+#include <Foundation/NSAutoReleasePool.h>
 #include <map>
 #include "CinderIPod.h" // for PlaylistRef
+#include "Filter.h"
 
 class Data {
   public:
     
     enum LoadState { LoadStateDefault, LoadStateLoading, LoadStatePending, LoadStateComplete };
     
-	Data(): mState(LoadStateDefault) {};
+	Data() { mState = LoadStateDefault; };
     ~Data() {};
     
     void setup();
@@ -31,17 +32,9 @@ class Data {
     
     LoadState getState() { return mState; }
     
-    float getArtistProgress() { return mArtistProgress; }
-    float getPlaylistProgress() { return mPlaylistProgress; }
-
-    void artistProgress(float p) { mArtistProgress = p; }
-    void playlistProgress(float p) { mPlaylistProgress = p; }
-    
   private:
 	    
-	void backgroundInit();
-    
-    float mArtistProgress, mPlaylistProgress;
+	void backgroundInit();	
     
     LoadState mState;
 	std::vector<ci::ipod::PlaylistRef> mPendingArtists;

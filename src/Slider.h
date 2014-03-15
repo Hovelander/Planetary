@@ -3,57 +3,42 @@
 //  Kepler
 //
 //  Created by Tom Carden on 5/17/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #pragma once
-#include "BloomNode.h"
+#include "UIElement.h"
 #include "cinder/Area.h"
-#include "cinder/Rect.h"
+#include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
 
-class Slider : public BloomNode {
+using namespace ci;
+
+class Slider : public UIElement {
 public:
     
-    Slider(const int &id, 
-           const ci::gl::Texture &texture,               
-           const ci::Area &bgTexArea, 
-           const ci::Area &fgTexArea, 
-           const ci::Area &thumbDownTexArea, 
-           const ci::Area &thumbUpTexArea): 
-        BloomNode(id), 
-        mTexture(texture),
-        // texture Areas:
-        mBgTexArea(bgTexArea),
-        mFgTexArea(fgTexArea),
-        mThumbDownTexArea(thumbDownTexArea),
-        mThumbUpTexArea(thumbUpTexArea),
-        // state:
-        mValue(0.0f),
-        mIsDragging(false) {}
-
+    Slider() {}
     ~Slider() {}
     
+    void setup(int id, 
+               const gl::Texture &texture,               
+               Area bgTexArea, 
+               Area fgTexArea, 
+               Area thumbDownTexArea, 
+               Area thumbUpTexArea);
+
     bool isDragging();
     void setIsDragging(bool isDragging);
 
     float getValue();
     void setValue(float value);
 
-    virtual bool touchBegan(ci::app::TouchEvent::Touch touch);
-    virtual bool touchMoved(ci::app::TouchEvent::Touch touch);
-    virtual bool touchEnded(ci::app::TouchEvent::Touch touch);
-    virtual void draw();
-    
-    void setRect(const ci::Rectf &rect) { mRect = rect; }
-    void setRect(const float &x1, const float &y1, const float &x2, const float &y2) { mRect.set(x1,y1,x2,y2); }
-    const ci::Rectf& getRect() const { return mRect; }
+    void draw();
     
 protected:
 
-    ci::Area mFgTexArea, mBgTexArea, mThumbDownTexArea, mThumbUpTexArea; // texture coords, fixed
-    ci::gl::Texture mTexture;
-    ci::Rectf mRect;
+    Area mFgTexArea, mBgTexArea, mThumbDownTexArea, mThumbUpTexArea; // texture coords, fixed
+    gl::Texture mTexture;
     
     float mValue;
     bool mIsDragging;

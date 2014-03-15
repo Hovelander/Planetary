@@ -3,7 +3,7 @@
 //  Kepler
 //
 //  Created by Tom Carden on 6/10/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #include "Stats.h"
@@ -23,43 +23,46 @@ void Stats::setup(const Font &font, const Color &fpsColor, const Color &color)
 
 void Stats::update(const float &fps, 
                    const float &playheadTime, 
-                   const float &fov,
-				   const float &camDist,
-				   const float &pinchPer,
+                   const float &fov, 
                    const float &currentLevel, 
                    const float &zoom)
 {
     stringstream s;
 	TextLayout layout;	
 	layout.setFont( mFont );
-	layout.setColor( mColor );
+	layout.setColor( mFpsColor );
 
 	s.str("");
 	s << "FPS: " << fps;
 	layout.addLine( s.str() );
 	
-//	s.str("");
-//	s << "FOV: " << fov;
-//	layout.addLine( s.str() );
-//	
-//	s.str("");
-//	s << "mCamDist: " << camDist;
-//	layout.addLine( s.str() );
-//	
-//	s.str("");
-//	s << "mPinchTotalDest: " << pinchPer;
-//	layout.addLine( s.str() );
+	layout.setColor( mColor );
+	s.str("");
+	s << "PLAYHEAD TIME: " << playheadTime;
+	layout.addLine( s.str() );
+	
+	s.str("");
+	s << "FOV: " << fov;
+	layout.addLine( s.str() );
+	
+	s.str("");
+	s << "CURRENT LEVEL: " << currentLevel;
+	layout.addLine( s.str() );
+	
+	s.str("");
+	s << "ZOOM LEVEL: " << zoom;
+	layout.addLine( s.str() );
 	
 	mParamsTex = gl::Texture( layout.render( true, false ) );    
 }
 
-void Stats::draw(const Matrix44f &mtx)
+void Stats::draw(const Matrix44f &orientationMatrix)
 {
     if (mParamsTex) {
         glPushMatrix();
-        glMultMatrixf( mtx );
-        gl::color( ColorA( Color::white(), 0.1f ) );
-        gl::draw( mParamsTex, Vec2f( 23.0f, 15.0f ) );
+        glMultMatrixf( orientationMatrix );
+        gl::color( Color::white() );
+        gl::draw( mParamsTex, Vec2f( 23.0f, 25.0f ) );
         glPopMatrix();    
     }
 }

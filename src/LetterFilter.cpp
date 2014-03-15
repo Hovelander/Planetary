@@ -3,18 +3,13 @@
 //  Kepler
 //
 //  Created by Tom Carden on 6/4/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #include "LetterFilter.h"
 #include <stdio.h> // for toupper(char), isalpha(char), etc.
 #include <string>
 #include <boost/algorithm/string.hpp> // for boost::to_upper(std::string)
-
-FilterRef LetterFilter::create(char letter)
-{
-    return FilterRef( new LetterFilter( letter ) );
-}
 
 LetterFilter::LetterFilter(char letter)
 {

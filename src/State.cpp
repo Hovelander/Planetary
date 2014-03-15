@@ -3,7 +3,7 @@
  *  Bloom
  *
  *  Created by Robert Hodgin on 2/7/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
@@ -19,16 +19,19 @@ using namespace std;
 
 void State::setup()
 {
-    mFilterMode		= FilterModeAlphaChar;
-	mAlphaChar		= 'A';
-	mSelectedNode	= NULL;
-	mDistBetweenPrevAndCurrentNode = 50.0f;
+    mFilterMode = FilterModeUndefined;
+	mAlphaChar = ' ';
+	mSelectedNode = NULL;
+	mDistBetweenPrevAndCurrentNode = 1.0f;
 }
 
 void State::setAlphaChar( char c )
 {
-    mAlphaChar = c;
-    mCallbacksAlphaCharStateChanged.call( mAlphaChar );
+	if (mAlphaChar != c) {
+        std::cout << "State::setAlphaChar " << c << std::endl;
+		mAlphaChar = c;
+		mCallbacksAlphaCharStateChanged.call( this );
+	}
 }
 
 void State::setAlphaChar( const string &name )
@@ -50,7 +53,7 @@ void State::setAlphaChar( const string &name )
 void State::setPlaylist( ci::ipod::PlaylistRef playlist )
 {
 	mCurrentPlaylist = playlist;
-	mCallbacksPlaylistStateChanged.call( playlist );
+	mCallbacksPlaylistStateChanged.call( this );
 }
 
 
@@ -68,7 +71,7 @@ void State::setSelectedNode( Node* node )
 			selection = selection->mParentNode;
 		}
 		mSelectedNode = NULL;
-		mDistBetweenPrevAndCurrentNode = 10.0f;
+		mDistBetweenPrevAndCurrentNode = 20.0f;
 	}
 	else {
 		
@@ -107,9 +110,9 @@ void State::setSelectedNode( Node* node )
 		Node* prevSelectedNode = mSelectedNode;
 		mSelectedNode = node;
 		
-		if( prevSelectedNode && mSelectedNode && (prevSelectedNode != mSelectedNode) ) {
+		if( prevSelectedNode && mSelectedNode ) {
 			mDistBetweenPrevAndCurrentNode = prevSelectedNode->mPos.distance( mSelectedNode->mPos );
-		}
+        }
 				
 		// ensure everything in the next chain is selected
         for (int i = 0; i < nextChain.size(); i++) {
@@ -119,11 +122,4 @@ void State::setSelectedNode( Node* node )
     
 	// and then spread the good word
 	mCallbacksNodeSelected.call(mSelectedNode);
-}
-
-bool State::setFilterMode(FilterMode filterMode)
-{ 
-    mFilterMode = filterMode; 
-    mCallbacksFilterModeStateChanged.call(filterMode);
-    return false; // for use in callbacks
 }

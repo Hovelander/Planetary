@@ -3,14 +3,11 @@
 //  Kepler
 //
 //  Created by Tom Carden on 5/17/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #include "Slider.h"
-#include "cinder/gl/gl.h"
 #include "BloomGl.h"
-
-using namespace ci;
 
 bool Slider::isDragging() 
 { 
@@ -30,6 +27,25 @@ void Slider::setValue(float value)
     mValue = value;
 }
 
+void Slider::setup(int id, 
+                   const gl::Texture &texture,               
+                   Area bgTexArea, 
+                   Area fgTexArea, 
+                   Area thumbDownTexArea, 
+                   Area thumbUpTexArea)
+{
+    UIElement::setup(id);
+    mTexture = texture;
+    // texture Areas:
+    mBgTexArea = bgTexArea;
+    mFgTexArea = fgTexArea;
+    mThumbDownTexArea = thumbDownTexArea;
+    mThumbUpTexArea = thumbUpTexArea;
+    // state:
+    mValue = 0.0f;
+    mIsDragging = false;
+}
+
 void Slider::draw()
 {   
     const float thumbProgress = (mRect.x2-mRect.x1) * mValue;
@@ -46,51 +62,7 @@ void Slider::draw()
     
     Area thumbTexArea = mIsDragging ? mThumbDownTexArea : mThumbUpTexArea; 
     
-    bloom::gl::batchRect( mTexture, mBgTexArea, mRect );
-    bloom::gl::batchRect( mTexture, mFgTexArea, fgRect );
-    bloom::gl::batchRect( mTexture, thumbTexArea, thumbRect );
-}
-
-bool Slider::touchBegan(ci::app::TouchEvent::Touch touch)
-{
-    if (mIsDragging) {
-        // slider can only handle one touch
-        return false;
-    }
-    Vec2f touchPos = globalToLocal( touch.getPos() );
-    Rectf hitRect = Rectf( mRect.x1 - 10.0f, mRect.y1 - 3.0f, mRect.x2 + 10.0f, mRect.y2 + 3.0f );
-    bool inside = hitRect.contains( globalToLocal( touch.getPos() ) );
-    setIsDragging(inside);
-    return inside;
-}
-bool Slider::touchMoved(ci::app::TouchEvent::Touch touch)
-{
-    if (!mIsDragging) {
-        // reject touchMoved if dragging was canceled
-        return false;
-    }
-    
-    // adjust for orientation and offset
-    Vec2f pos = globalToLocal( touch.getPos() );
-    
-    // FIXME: assumes slider is horizontal :)
-    float sliderPer = (pos.x - mRect.x1) / (mRect.x2 - mRect.x1);
-    if (sliderPer < 0.0f) 
-        sliderPer = 0.0f;
-    else if (sliderPer > 1.0f) 
-        sliderPer = 1.0f;
-    
-    setValue( sliderPer ); 
-    
-    return true; // always consume drags for slider
-}
-bool Slider::touchEnded(ci::app::TouchEvent::Touch touch)
-{
-    if (!mIsDragging) {
-        // reject touchEnded if dragging was canceled
-        return false;
-    }    
-    touchMoved(touch);
-    setIsDragging(false);
-    return true;
+    bloom::gl::batchRect(mTexture, mBgTexArea, mRect);            
+    bloom::gl::batchRect(mTexture, mFgTexArea, fgRect);
+    bloom::gl::batchRect(mTexture, thumbTexArea, thumbRect);        
 }

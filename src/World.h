@@ -3,7 +3,7 @@
  *  Kepler
  *
  *  Created by Robert Hodgin on 2/25/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
@@ -19,7 +19,6 @@
 
 #include "Node.h"
 #include "NodeArtist.h"
-#include "NodeAlbum.h"
 #include "NodeTrack.h"
 
 #include "Filter.h"
@@ -51,11 +50,8 @@ public:
     
     void updateIsPlaying( uint64_t artistId, uint64_t albumId, uint64_t trackId );
     void selectHierarchy( uint64_t artistId, uint64_t albumId, uint64_t trackId );
-    NodeTrack*  getTrackNodeById( uint64_t artistId, uint64_t albumId, uint64_t trackId );
-    NodeAlbum*  getAlbumNodeById( uint64_t artistId, uint64_t albumId );
-    NodeArtist* getArtistNodeById(const uint64_t theId) { return mNodesById[theId]; }    
-    NodeTrack*  selectPlayingHierarchy( uint64_t artistId, uint64_t albumId, uint64_t trackId );
-                                          
+    NodeTrack* getTrackNodeById( uint64_t artistId, uint64_t albumId, uint64_t trackId );
+    
     void updateAgainstCurrentFilter();
     
 	void checkForNameTouch( std::vector<Node*> &nodes, const ci::Vec2f &pos );
@@ -66,12 +62,14 @@ public:
 	void drawStarsVertexArray();
 	void drawStarGlowsVertexArray();
 	void drawNames( const ci::CameraPersp &cam, float pinchAlphaOffset, float angle );
-	void drawOrbitRings( float pinchAlphaOffset, float camAlpha, float fadeInAlphaToArtist, float fadeInArtistToAlbum );
+	void drawOrbitRings( float pinchAlphaOffset, float camAlpha );
 	void drawConstellation();
 	void drawTouchHighlights( float zoomAlpha );
 	void drawRings( const ci::gl::Texture &tex, float camZPos );
     void drawHitAreas();
-        
+    
+    NodeArtist* getArtistNodeById(const uint64_t theId) { return mNodesById[theId]; }
+    
 	std::vector<Node*> getUnsortedNodes( int fromGen, int toGen );
     std::vector<Node*> sortNodes( std::vector<Node*> unsortedNodes );
 	

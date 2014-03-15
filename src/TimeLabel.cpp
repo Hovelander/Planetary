@@ -3,12 +3,10 @@
 //  Kepler
 //
 //  Created by Tom Carden on 5/25/11.
-//  Copyright 2013 Smithsonian Institution. All rights reserved.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
 //
 
 #include "TimeLabel.h"
-#include "cinder/gl/gl.h"
-#include "cinder/Text.h"
 #include "BloomGl.h"
 
 void TimeLabel::setSeconds(int seconds)
@@ -21,20 +19,15 @@ void TimeLabel::setSeconds(int seconds)
 
 void TimeLabel::updateTexture()
 {
-	int hours	= floor(abs(mSeconds)/3600.0f);
     int minutes = floor(abs(mSeconds)/60.0f);
-	minutes = minutes - hours * 60;
     int seconds = (int)abs(mSeconds)%60;
     
-	string hourStr = ci::toString( hours );
     string minsStr = ci::toString( minutes );
     string secsStr = ci::toString( seconds );
     if( minsStr.length() == 1 ) minsStr = "0" + minsStr;
     if( secsStr.length() == 1 ) secsStr = "0" + secsStr;		
-	
+        
     stringstream ss;
-	if( hours > 0 )
-		ss << hourStr << ":";
     ss << minsStr << ":" << secsStr << endl;
         
     TextLayout layout;
@@ -59,19 +52,11 @@ void TimeLabel::draw()
 {
     // to keep the digit left-aligned in the box, squeeze the minus sign in before it
     if (mHyphenTexture) {
-        bloom::gl::batchRect( mHyphenTexture, mRect.getUpperLeft() - Vec2f(mHyphenTexture.getWidth()-1.0f,0) );
+        // use batchRect to minimize state changes
+        bloom::gl::batchRect(mHyphenTexture, mRect.getUpperLeft() - Vec2f(mHyphenTexture.getWidth()-1.0f,0));
     }    
     if (mTexture) {
-        bloom::gl::batchRect( mTexture, mRect.getUpperLeft() );
+        // use batchRect to minimize state changes
+        bloom::gl::batchRect(mTexture, mRect.getUpperLeft());
     }
 }
-
-bool TimeLabel::touchBegan(ci::app::TouchEvent::Touch touch)
-{
-    return mRect.contains( globalToLocal( touch.getPos() ) );
-}
-bool TimeLabel::touchEnded(ci::app::TouchEvent::Touch touch)
-{
-    return mRect.contains( globalToLocal( touch.getPos() ) );
-}
-

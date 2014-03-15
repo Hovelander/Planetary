@@ -3,59 +3,63 @@
  *  Bloom
  *
  *  Created by Robert Hodgin on 2/7/11.
- *  Copyright 2013 Smithsonian Institution. All rights reserved.
+ *  Copyright 2011 __MyCompanyName__. All rights reserved.
  *
  */
 
 #pragma once
-
+#include "cinder/app/AppCocoaTouch.h"
 #include "cinder/Vector.h"
+#include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
-#include "cinder/Font.h"
 #include "cinder/Rect.h"
-#include "cinder/app/TouchEvent.h"
-#include "BloomNode.h"
+#include "cinder/Color.h"
+#include "cinder/Font.h"
+#include "cinder/Text.h"
+#include "Orientation.h"
+#include "OrientationEvent.h"
+#include "Globals.h"
+#include <vector>
 
-class HelpLayer : public BloomNode {
+class HelpLayer {
  public:
 	
-    HelpLayer() {};
-	~HelpLayer() {};
-    
-	void	setup( const ci::Font &smallFont, const ci::Font &bigFont, const ci::Font &bigBoldFont );
+    HelpLayer();
+	~HelpLayer();
+	void	setup( ci::app::AppCocoaTouch *app, const ci::app::Orientation &orientation );
 	
-    bool	touchBegan( ci::app::TouchEvent::Touch touch );
-	bool	touchEnded( ci::app::TouchEvent::Touch touch );
-
+    bool	touchesBegan( ci::app::TouchEvent event );
+	bool	touchesMoved( ci::app::TouchEvent event );
+	bool	touchesEnded( ci::app::TouchEvent event );
+    void    setInterfaceOrientation( const ci::app::Orientation &orientation );
+	void	initHelpTextures( const ci::Font &font );
+	
 	void	update();
-	void	draw();
+	void	draw( const ci::gl::Texture &tex, float y );
 	
-    void    show( bool show = true, bool animate = true );
-    void    hide( bool animate = true ) { show( false, animate ); }
-    void    toggle() { show( !isShowing() ); }
-    bool    isShowing() { return mShowing; }
-    
-    float   getHeight() { return mBgRect.getHeight() + mCurrentY; }
-        
  private:
+	
+    ci::Rectf   transformRect( const ci::Rectf &worldRect, const ci::Matrix44f &matrix );
     
-    void updateRect( ci::Rectf *rect, const std::wstring &fullStr, const std::wstring &rectStr, const std::vector<std::pair<uint16_t,ci::Vec2f> > &glyphPositions );
-    
-    // control visibility, animation
-    bool mShowing, mAnimating;
-    float mCurrentY, mTargetY;
-    
-    // fonts
-    ci::Font mBigFont, mBigBoldFont, mSmallFont;
-
-    // textures
-    ci::gl::Texture mHeadingTex, mBodyTex;
-    
-    // dimensions and positions
-    ci::Vec2f mInterfaceSize, mHeadingPos, mBodyPos;
-    ci::Rectf mBgRect;
-    
-    // hit rects for links:
-    ci::Rectf mCinderRect, mWebRect, mEmailRect;
+	ci::app::AppCocoaTouch *mApp;
+	ci::CallbackId	mCbTouchesBegan, mCbTouchesMoved, mCbTouchesEnded, mCbOrientationChanged;
+	
+	ci::gl::Texture mHelpPanelTex;
+	
+    float           mPanelHeight;           // TODO: const?
+	ci::Rectf		mPanelRect;				// Rect defining the panel width and height
+	ci::Rectf		mCloseRect;				// close button
+	bool			mIsCloseTouched;
+	
+	ci::Rectf mPlanetaryButton, mMailButton, mBloomButton, mCinderButton;
+	
+	float			mHelpPer;
+	ci::gl::Texture mDescTex;
+	std::vector<ci::gl::Texture> mHelpTextures;
+	ci::Vec2f		mHelpLocs[G_TOTAL_HELP_CALLOUTS];
+	
+	ci::app::Orientation mInterfaceOrientation;
+    ci::Matrix44f   mOrientationMtx;
+    ci::Vec2f       mInterfaceSize;
 };
 
