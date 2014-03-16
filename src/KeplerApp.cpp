@@ -492,7 +492,8 @@ gl::Texture KeplerApp::loadCompressedTexture(const std::string &dataPath, const 
     DataSourceRef dataSource = loadResource(dataPath);
     const size_t dataSize = dataSource->getBuffer().getDataSize();
     const uint8_t *data = static_cast<uint8_t*>(dataSource->getBuffer().getData());
-    return gl::Texture::withCompressedData(data, imageSize.x, imageSize.y, dataSize, compressedFormat);    
+    //  DanO - check out the line below and fix
+//    return gl::Texture::withCompressedData(data, imageSize.x, imageSize.y, dataSize, compressedFormat);
 }
 
 void KeplerApp::initTextures()

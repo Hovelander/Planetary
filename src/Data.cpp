@@ -38,7 +38,8 @@ void Data::backgroundInit()
 	NSAutoreleasePool *autoreleasepool = [[NSAutoreleasePool alloc] init];
 	
 	Flurry::getInstrumentation()->startTimeEvent("Music Loading");
-	mPendingArtists = getArtists();
+    //  DanO - check out the line below and fix
+    //	mPendingArtists = getArtists();
 	cout << "got " << mPendingArtists.size() << " artists" << endl;
 	
 // QUICK FIX FOR GETTING MORE DATA ONTO THE ALPHAWHEEL
@@ -83,7 +84,8 @@ void Data::backgroundInit()
     Flurry::getInstrumentation()->logEvent("Artists loaded", params);
 	
 	Flurry::getInstrumentation()->startTimeEvent("Playlists Loading");
-	mPendingPlaylists = getPlaylists();
+    //  DanO - check out the line below and fix
+	//  mPendingPlaylists = getPlaylists();
 	cout << "got " << mPendingPlaylists.size() << " playlists" << endl;
     params.clear();
     params["NumPlaylists"] = toString( mPendingPlaylists.size());
