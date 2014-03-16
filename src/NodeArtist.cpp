@@ -244,8 +244,7 @@ void NodeArtist::select()
 				NodeAlbum *newNode = new NodeAlbum( this, i, mFont, mSmallFont, mHighResSurfaces, mLowResSurfaces, mNoAlbumArtSurface );
                 newNode->setSphereData( mHiSphere, mMdSphere, mLoSphere, mTySphere );
 				mChildNodes.push_back( newNode );
-//  DanO - check out the line below and fix
-             // trackcount += album->m_tracks.size();
+				trackcount += album->size();
 				newNode->setData( album );
 				i++;
 			}
