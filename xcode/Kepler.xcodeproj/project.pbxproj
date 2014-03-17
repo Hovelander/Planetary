@@ -1120,7 +1120,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CINDER_PATH = "$(CINDER_PATH_$(USER))";
-				CINDER_PATH_dan = /Users/abulafia/libs/Cinder.8.4;
+				CINDER_PATH_dan = /Users/abulafia/libs/Cinder.8.6.dev.Boost1.55;
 				CINDER_PATH_robert = ../../../../cinder_master;
 				CINDER_PATH_tom = /Users/tom/Documents/Code/Cinder/Cinder;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++98";
@@ -1152,7 +1152,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CINDER_PATH = "$(CINDER_PATH_$(USER))";
-				CINDER_PATH_dan = /Users/abulafia/libs/Cinder.8.4;
+				CINDER_PATH_dan = /Users/abulafia/libs/Cinder.8.6.dev.Boost1.55;
 				CINDER_PATH_robert = ../../../../cinder_master;
 				CINDER_PATH_tom = /Users/tom/Documents/Code/Cinder/Cinder;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++98";
@@ -1185,7 +1185,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CINDER_PATH = "$(CINDER_PATH_$(USER))";
-				CINDER_PATH_dan = /Users/abulafia/libs/Cinder.8.4;
+				CINDER_PATH_dan = /Users/abulafia/libs/Cinder.8.6.dev.Boost1.55;
 				CINDER_PATH_robert = ../../../../cinder_master;
 				CINDER_PATH_tom = /Users/tom/Documents/Code/Cinder/Cinder;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++98";
