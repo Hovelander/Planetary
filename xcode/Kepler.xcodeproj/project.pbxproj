@@ -1120,11 +1120,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CINDER_PATH = "$(CINDER_PATH_$(USER))";
-				CINDER_PATH_dan = /Users/abulafia/libs/Cinder.8.4;
+				CINDER_PATH_dan = /Users/abulafia/libs/Cinder;
 				CINDER_PATH_robert = ../../../../cinder_master;
 				CINDER_PATH_tom = /Users/tom/Documents/Code/Cinder/Cinder;
-				CLANG_CXX_LANGUAGE_STANDARD = "c++98";
-				CLANG_CXX_LIBRARY = "libstdc++";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				GCC_C_LANGUAGE_STANDARD = c99;
@@ -1152,11 +1152,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CINDER_PATH = "$(CINDER_PATH_$(USER))";
-				CINDER_PATH_dan = /Users/abulafia/libs/Cinder.8.4;
+				CINDER_PATH_dan = /Users/abulafia/libs/Cinder;
 				CINDER_PATH_robert = ../../../../cinder_master;
 				CINDER_PATH_tom = /Users/tom/Documents/Code/Cinder/Cinder;
-				CLANG_CXX_LANGUAGE_STANDARD = "c++98";
-				CLANG_CXX_LIBRARY = "libstdc++";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=*]" = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -1185,11 +1185,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CINDER_PATH = "$(CINDER_PATH_$(USER))";
-				CINDER_PATH_dan = /Users/abulafia/libs/Cinder.8.4;
+				CINDER_PATH_dan = /Users/abulafia/libs/Cinder;
 				CINDER_PATH_robert = ../../../../cinder_master;
 				CINDER_PATH_tom = /Users/tom/Documents/Code/Cinder/Cinder;
-				CLANG_CXX_LANGUAGE_STANDARD = "c++98";
-				CLANG_CXX_LIBRARY = "libstdc++";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=*]" = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
