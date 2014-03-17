@@ -29,9 +29,9 @@ void Data::setup()
 	
     if (mState != LoadStateLoading) {
         mState = LoadStateLoading;
-        mArtistProgress = 0.0f;
-        mPlaylistProgress = 0.0f;
-//        std::thread artistLoaderThread( &Data::backgroundInit, this );    //Commented out in attempt at successful build
+//        mArtistProgress = 0.0f;
+//        mPlaylistProgress = 0.0f;
+        std::thread artistLoaderThread( &Data::backgroundInit, this );    //Commented out in attempt at successful build
     }
 }
 
@@ -41,15 +41,15 @@ void Data::backgroundInit()
 	
 	Flurry::getInstrumentation()->startTimeEvent("Music Loading");
 
-	mPendingArtists = getArtists( std::bind1st( std::mem_fun(&Data::artistProgress), this ) );
-    mPendingPlaylists = getPlaylists( std::bind1st( std::mem_fun(&Data::playlistProgress), this ) );
+//	mPendingArtists = getArtists( std::bind1st( std::mem_fun(&Data::artistProgress), this ) );
+//    mPendingPlaylists = getPlaylists( std::bind1st( std::mem_fun(&Data::playlistProgress), this ) );
 
     map<string, string> params;
     params["NumArtists"]   = toString( mPendingArtists.size() );
     params["NumPlaylists"] = toString( mPendingPlaylists.size() );
 	Flurry::getInstrumentation()->stopTimeEvent("Music Loading", params);
     //  DanO - check out the line below and fix
-    //	mPendingArtists = getArtists();
+    //  mPendingArtists = getArtists();
     
 //	cout << "got " << mPendingArtists.size() << " artists" << endl;
 	
